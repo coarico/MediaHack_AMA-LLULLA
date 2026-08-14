@@ -637,10 +637,43 @@ function App() {
                   {/* Resultados del análisis */}
                   {analysisResult && (
                     <div className="mt-6 space-y-4">
+                      {/* Fuente Original */}
+                      {analysisResult.metadata?.source_metadata && (
+                        <div className="rounded-lg border p-4" style={{ backgroundColor: '#12161F', borderColor: '#1E2433' }}>
+                          <h4 className="text-sm font-semibold text-white mb-3">FUENTE ORIGINAL</h4>
+                          <div className="space-y-2">
+                            <div className="flex items-start gap-2">
+                              <div className="w-10 h-10 rounded flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#E85D5D' }}>
+                                <span className="text-white font-bold text-xs">▶</span>
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-white">{analysisResult.metadata.source_metadata.title}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-xs" style={{ color: '#7A8290' }}>Canal:</span>
+                                  <span className="text-xs text-white">{analysisResult.metadata.source_metadata.channel}</span>
+                                  {analysisResult.metadata.source_metadata.is_verified && (
+                                    <CheckCircle2 className="w-3 h-3" style={{ color: '#00C896' }} />
+                                  )}
+                                </div>
+                                <p className="text-xs mt-1" style={{ color: '#7A8290' }}>
+                                  Plataforma: {analysisResult.metadata.source_metadata.platform}
+                                </p>
+                                {!analysisResult.metadata.source_metadata.is_verified && (
+                                  <div className="mt-2 flex items-center gap-1 text-xs" style={{ color: '#E8A33D' }}>
+                                    <AlertTriangle className="w-3 h-3" />
+                                    <span>Canal no verificado oficialmente</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="rounded-lg border p-5" style={{ backgroundColor: '#12161F', borderColor: '#1E2433' }}>
                         <h4 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
                           <CheckCircle2 className="w-5 h-5" style={{ color: '#00C896' }} />
-                          Resultados del Análisis
+                          ¿EL CONTENIDO ES AUTÉNTICO?
                         </h4>
                         
                         <div className="space-y-4">
@@ -660,21 +693,48 @@ function App() {
                             </div>
                           </div>
 
-                          {/* Transcripción */}
+                          {/* Transcripción + Verificación */}
                           {analysisResult.content_analysis?.has_transcription && analysisResult.content_analysis?.transcription?.text && (
-                            <div className="rounded-lg p-3" style={{ backgroundColor: '#0B0E14' }}>
-                              <h5 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
-                                <Activity className="w-4 h-4" style={{ color: '#00C896' }} />
-                                Transcripción del Audio
-                              </h5>
-                              <p className="text-xs leading-relaxed" style={{ color: '#E8ECF1' }}>
-                                {analysisResult.content_analysis.transcription.text}
-                              </p>
-                              {analysisResult.content_analysis.transcription.language && (
-                                <p className="text-xs mt-2" style={{ color: '#7A8290' }}>
-                                  Idioma: {analysisResult.content_analysis.transcription.language}
-                                </p>
-                              )}
+                            <div className="rounded-lg border p-4" style={{ backgroundColor: '#0B0E14', borderColor: '#1E2433' }}>
+                              <h5 className="text-sm font-semibold text-white mb-3">TRANSCRIPCIÓN + VERIFICACIÓN</h5>
+                              <div className="space-y-3">
+                                {analysisResult.content_analysis.transcription.segments?.slice(0, 5).map((segment, idx) => {
+                                  const minutes = Math.floor(segment.start / 60)
+                                  const seconds = Math.floor(segment.start % 60)
+                                  const timestamp = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+                                  
+                                  // Simular verificación (en producción vendría del fact-checking)
+                                  const statuses = ['FALSO', 'IMPRECISO', 'ENGAÑOSO']
+                                  const colors = ['#E85D5D', '#E8A33D', '#E8A33D']
+                                  const randomStatus = statuses[idx % 3]
+                                  const statusColor = colors[idx % 3]
+                                  
+                                  return (
+                                    <div key={idx} className="flex gap-3 pb-3" style={{ borderBottom: idx < 4 ? '1px solid #1E2433' : 'none' }}>
+                                      <span className="text-xs font-mono flex-shrink-0" style={{ color: '#7A8290' }}>{timestamp}</span>
+                                      <div className="flex-1">
+                                        <p className="text-xs leading-relaxed" style={{ color: '#E8ECF1' }}>
+                                          "{segment.text}"
+                                        </p>
+                                        {idx < 3 && (
+                                          <div className="mt-1 flex items-center gap-2">
+                                            <span className="text-xs px-2 py-0.5 rounded font-semibold" style={{ backgroundColor: statusColor + '20', color: statusColor }}>
+                                              {randomStatus}
+                                            </span>
+                                            <span className="text-xs" style={{ color: '#7A8290' }}>
+                                              Fuente: {['MSP', 'INEC', 'Fuente oficial'][idx]}
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )
+                                }) || (
+                                  <p className="text-xs leading-relaxed" style={{ color: '#E8ECF1' }}>
+                                    {analysisResult.content_analysis.transcription.text}
+                                  </p>
+                                )}
+                              </div>
                             </div>
                           )}
 

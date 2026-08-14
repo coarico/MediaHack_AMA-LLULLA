@@ -88,7 +88,7 @@ class FileHandler:
         
         return file_path
     
-    async def download_from_url(self, url: str) -> Path:
+    async def download_from_url(self, url: str) -> tuple[Path, dict]:
         """
         Download file from URL to temporary directory
         Supports YouTube and direct URLs
@@ -97,7 +97,7 @@ class FileHandler:
             url: URL of the file
             
         Returns:
-            Path to downloaded file
+            Tuple of (Path to downloaded file, metadata dict or None)
             
         Raises:
             Exception: If download fails
@@ -125,17 +125,17 @@ class FileHandler:
             with open(file_path, "wb") as f:
                 f.write(response.content)
             
-            return file_path
+            return file_path, None
     
-    async def _download_youtube(self, url: str) -> Path:
+    async def _download_youtube(self, url: str) -> tuple[Path, dict]:
         """
-        Download video from YouTube using yt-dlp
+        Download video from YouTube using yt-dlp and extract metadata
         
         Args:
             url: YouTube URL
             
         Returns:
-            Path to downloaded video file
+            Tuple of (Path to downloaded video file, metadata dict)
         """
         import yt_dlp
         
@@ -144,17 +144,41 @@ class FileHandler:
         output_template = str(self.temp_dir / f"{unique_id}.%(ext)s")
         
         ydl_opts = {
-            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+            'format': 'bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4][height<=720]/best[height<=720]/best',
             'outtmpl': output_template,
             'quiet': True,
             'no_warnings': True,
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web'],
+                }
+            },
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            },
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             filename = ydl.prepare_filename(info)
             
-        return Path(filename)
+            # Extract metadata
+            metadata = {
+                'source_url': url,
+                'title': info.get('title', ''),
+                'channel': info.get('channel', ''),
+                'channel_id': info.get('channel_id', ''),
+                'uploader': info.get('uploader', ''),
+                'upload_date': info.get('upload_date', ''),
+                'description': info.get('description', ''),
+                'view_count': info.get('view_count', 0),
+                'like_count': info.get('like_count', 0),
+                'duration': info.get('duration', 0),
+                'is_verified': info.get('channel_is_verified', False),
+                'platform': 'YouTube'
+            }
+            
+        return Path(filename), metadata
     
     def is_audio_file(self, file_path: Path) -> bool:
         """Check if file is an audio file based on extension"""

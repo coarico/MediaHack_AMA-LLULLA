@@ -97,6 +97,7 @@ class MediaMetadata(BaseModel):
     channels: Optional[int] = Field(None, description="Number of audio channels")
     resolution: Optional[str] = Field(None, description="Video resolution (e.g., 1920x1080)")
     fps: Optional[float] = Field(None, description="Frames per second")
+    source_metadata: Optional[dict] = Field(None, description="Source metadata (YouTube, etc.)")
 
 
 class AnalysisResponse(BaseModel):

@@ -258,7 +258,7 @@ async def analyze_from_url(request: AudioAnalysisRequest):
             )
         
         # Download file from URL
-        temp_path = await file_handler.download_from_url(str(request.url))
+        temp_path, source_metadata = await file_handler.download_from_url(str(request.url))
         
         try:
             # Determine file type and analyze
@@ -273,6 +273,10 @@ async def analyze_from_url(request: AudioAnalysisRequest):
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Unsupported file type. Please provide an audio or video file."
                 )
+            
+            # Add source metadata if available (YouTube)
+            if source_metadata:
+                result.metadata.source_metadata = source_metadata
             
             # Perform content analysis
             content_analysis_dict = await perform_content_analysis(temp_path, is_video=is_video)
