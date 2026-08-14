@@ -102,9 +102,24 @@ class FileHandler:
         Raises:
             Exception: If download fails
         """
-        # Check if it's a YouTube URL
-        if 'youtube.com' in url or 'youtu.be' in url:
-            return await self._download_youtube(url)
+        # Platforms supported by yt-dlp
+        yt_dlp_platforms = [
+            'youtube.com', 'youtu.be',
+            'instagram.com', 'instagr.am',
+            'tiktok.com',
+            'facebook.com', 'fb.watch', 'fb.com',
+            'twitter.com', 'x.com',
+            'vimeo.com',
+            'dailymotion.com', 'dai.ly',
+            'twitch.tv',
+            'reddit.com', 'redd.it',
+            'pinterest.com', 'pin.it',
+            'linkedin.com',
+            'bilibili.com', 'b23.tv',
+        ]
+        
+        if any(platform in url for platform in yt_dlp_platforms):
+            return await self._download_with_ytdlp(url)
         
         # Regular URL download
         async with httpx.AsyncClient() as client:
@@ -127,12 +142,14 @@ class FileHandler:
             
             return file_path, None
     
-    async def _download_youtube(self, url: str) -> tuple[Path, dict]:
+    async def _download_with_ytdlp(self, url: str) -> tuple[Path, dict]:
         """
-        Download video from YouTube using yt-dlp and extract metadata
+        Download video from any supported platform using yt-dlp and extract metadata
+        
+        Supports: YouTube, Instagram, TikTok, Facebook, Twitter/X, Vimeo, etc.
         
         Args:
-            url: YouTube URL
+            url: URL of the video
             
         Returns:
             Tuple of (Path to downloaded video file, metadata dict)
@@ -148,11 +165,6 @@ class FileHandler:
             'outtmpl': output_template,
             'quiet': True,
             'no_warnings': True,
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['android', 'web'],
-                }
-            },
             'http_headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             },
@@ -162,11 +174,14 @@ class FileHandler:
             info = ydl.extract_info(url, download=True)
             filename = ydl.prepare_filename(info)
             
-            # Extract metadata
+            # Detect platform from extractor
+            extractor = info.get('extractor_key', 'Unknown')
+            
+            # Extract metadata (works across platforms)
             metadata = {
                 'source_url': url,
                 'title': info.get('title', ''),
-                'channel': info.get('channel', ''),
+                'channel': info.get('channel', '') or info.get('uploader', ''),
                 'channel_id': info.get('channel_id', ''),
                 'uploader': info.get('uploader', ''),
                 'upload_date': info.get('upload_date', ''),
@@ -175,7 +190,7 @@ class FileHandler:
                 'like_count': info.get('like_count', 0),
                 'duration': info.get('duration', 0),
                 'is_verified': info.get('channel_is_verified', False),
-                'platform': 'YouTube'
+                'platform': extractor
             }
             
         return Path(filename), metadata

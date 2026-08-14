@@ -72,14 +72,25 @@ class TranscriptionService:
         """
         import ffmpeg
         
+        # Convert Path to string if needed
+        video_path_str = str(video_path)
+        
         # Extract audio to temporary file
-        audio_path = video_path.replace(os.path.splitext(video_path)[1], '_audio.wav')
+        audio_path = video_path_str.replace(os.path.splitext(video_path_str)[1], '_audio.wav')
         
         try:
-            # Extract audio using ffmpeg
-            stream = ffmpeg.input(video_path)
-            stream = ffmpeg.output(stream, audio_path, acodec='pcm_s16le', ac=1, ar='16000')
-            ffmpeg.run(stream, overwrite_output=True, quiet=True)
+            # Use imageio-ffmpeg binary directly (more reliable than ffmpeg-python)
+            import imageio_ffmpeg
+            import subprocess
+            ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+            result = subprocess.run([
+                ffmpeg_exe, '-i', video_path_str, '-vn',
+                '-acodec', 'pcm_s16le', '-ac', '1', '-ar', '16000',
+                '-y', audio_path
+            ], capture_output=True, text=True)
+            
+            if result.returncode != 0:
+                raise Exception(f"ffmpeg failed: {result.stderr[:200]}")
             
             # Transcribe extracted audio
             result = await self.transcribe(audio_path)
