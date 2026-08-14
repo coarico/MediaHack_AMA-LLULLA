@@ -43,12 +43,24 @@ class VideoAnalysisDetails(BaseModel):
     artifacts: List[ArtifactDetection] = Field(default_factory=list)
 
 
+class SegmentVerification(BaseModel):
+    """Verification result for a single transcription segment"""
+    segment_index: int = Field(..., description="Index of the segment")
+    text: str = Field(..., description="Segment text")
+    start: float = Field(0.0, description="Start time in seconds")
+    end: float = Field(0.0, description="End time in seconds")
+    label: str = Field("SIN_VERIFICAR", description="Verification label")
+    source: str = Field("N/A", description="Verification source")
+    fact_checks_found: int = Field(0, description="Number of fact-checks found")
+
+
 class TranscriptionResult(BaseModel):
     """Speech-to-text transcription results"""
     text: str = Field(..., description="Transcribed text content")
     language: Optional[str] = Field(None, description="Detected language")
     duration: Optional[float] = Field(None, description="Audio duration in seconds")
     segments: Optional[List[dict]] = Field(None, description="Detailed transcription segments")
+    segment_verifications: Optional[List[SegmentVerification]] = Field(None, description="Per-segment fact-check results")
 
 
 class FactCheckReview(BaseModel):

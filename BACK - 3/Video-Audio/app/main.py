@@ -49,6 +49,7 @@ file_handler = FileHandler()
 async def perform_content_analysis(file_path: str, is_video: bool = False) -> dict:
     """
     Perform complete content analysis: transcription, fake news, fact-checking
+    Each transcription segment is fact-checked individually.
     
     Args:
         file_path: Path to media file
@@ -81,8 +82,59 @@ async def perform_content_analysis(file_path: str, is_video: bool = False) -> di
         # Extract claims
         extracted_claims = await content_analyzer.extract_claims(text)
         
-        # Fact-checking
+        # Fact-checking (full text)
         fact_checking = await fact_checker.analyze_text(text)
+        
+        # Per-segment fact-checking
+        segments = transcription.get('segments', [])
+        segment_verifications = []
+        
+        if segments:
+            print(f"🔍 Fact-checking {min(len(segments), 6)} segments...")
+            for idx, segment in enumerate(segments[:6]):
+                seg_text = segment.get('text', '').strip()
+                if len(seg_text) < 10:
+                    continue
+                
+                # Check this segment with Google Fact Check
+                seg_result = await fact_checker.check_claim(seg_text)
+                
+                checks_found = seg_result.get('fact_checks_found', 0)
+                fact_checks = seg_result.get('fact_checks', [])
+                
+                if checks_found > 0 and fact_checks:
+                    first_check = fact_checks[0]
+                    rating = first_check.get('rating', '').lower()
+                    publisher = first_check.get('publisher', 'N/A')
+                    
+                    # Determine label from rating
+                    if any(w in rating for w in ['false', 'falso', 'incorrecto', 'mentira', 'fake']):
+                        label = 'FALSO'
+                    elif any(w in rating for w in ['misleading', 'engañoso', 'impreciso', 'mixed']):
+                        label = 'IMPRECISO'
+                    elif any(w in rating for w in ['true', 'verdadero', 'correcto', 'accurate']):
+                        label = 'VERIFICADO'
+                    else:
+                        label = 'DISPUTADO'
+                    
+                    source = publisher
+                else:
+                    label = 'SIN_VERIFICAR'
+                    source = 'N/A'
+                
+                segment_verifications.append({
+                    'segment_index': idx,
+                    'text': seg_text,
+                    'start': segment.get('start', 0.0),
+                    'end': segment.get('end', 0.0),
+                    'label': label,
+                    'source': source,
+                    'fact_checks_found': checks_found
+                })
+            
+            print(f"✅ Segment verification complete: {len(segment_verifications)} segments checked")
+        
+        transcription['segment_verifications'] = segment_verifications
         
         return {
             'has_transcription': True,
