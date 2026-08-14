@@ -158,6 +158,9 @@ async def perform_content_analysis(file_path: str, is_video: bool = False) -> di
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     """Global exception handler"""
+    import traceback
+    print(f"❌ UNHANDLED ERROR: {exc}")
+    traceback.print_exc()
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=ErrorResponse(

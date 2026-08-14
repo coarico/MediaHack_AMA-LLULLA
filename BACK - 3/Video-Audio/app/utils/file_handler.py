@@ -155,16 +155,21 @@ class FileHandler:
             Tuple of (Path to downloaded video file, metadata dict)
         """
         import yt_dlp
+        import imageio_ffmpeg
         
         # Generate unique filename
         unique_id = str(uuid.uuid4())
         output_template = str(self.temp_dir / f"{unique_id}.%(ext)s")
         
+        # Get ffmpeg binary from imageio-ffmpeg
+        ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+        
         ydl_opts = {
-            'format': 'bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4][height<=720]/best[height<=720]/best',
+            'format': 'best[ext=mp4][height<=720]/best[height<=720]/best',
             'outtmpl': output_template,
             'quiet': True,
             'no_warnings': True,
+            'ffmpeg_location': ffmpeg_path,
             'http_headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             },

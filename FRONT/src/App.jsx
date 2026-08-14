@@ -635,91 +635,193 @@ function App() {
                   </button>
 
                   {/* Resultados del análisis */}
-                  {analysisResult && (
+                  {analysisResult && (() => {
+                    const sm = analysisResult.metadata?.source_metadata
+                    const segVs = analysisResult.content_analysis?.transcription?.segment_verifications || []
+                    const segs = analysisResult.content_analysis?.transcription?.segments || []
+                    const fcs = analysisResult.content_analysis?.fact_checking?.fact_checks || []
+                    const fcCount = analysisResult.content_analysis?.fact_checking?.fact_checks_found || 0
+
+                    // Stats for speech summary
+                    const totalSegs = segVs.length || segs.length || 0
+                    const verified = segVs.filter(s => s.label === 'VERIFICADO').length
+                    const falseCount = segVs.filter(s => s.label === 'FALSO').length
+                    const imprecise = segVs.filter(s => s.label === 'IMPRECISO' || s.label === 'ENGAÑOSO').length
+                    const unverified = segVs.filter(s => s.label === 'SIN_VERIFICAR' || s.label === 'DISPUTADO').length
+
+                    // Platform config
+                    const platformConfig = {
+                      'YouTube': { color: '#FF0000', bg: '#FF0000', icon: '▶', label: 'YouTube' },
+                      'Instagram': { color: '#E1306C', bg: '#E1306C', icon: '📷', label: 'Instagram' },
+                      'TikTok': { color: '#00F2EA', bg: '#000000', icon: '🎵', label: 'TikTok' },
+                      'Facebook': { color: '#1877F2', bg: '#1877F2', icon: 'f', label: 'Facebook' },
+                      'Twitter': { color: '#1DA1F2', bg: '#1DA1F2', icon: '𝕏', label: 'Twitter/X' },
+                      'Generic': { color: '#7A8290', bg: '#7A8290', icon: '▶', label: sm?.platform || 'Video' },
+                    }
+                    const pc = platformConfig[sm?.platform] || platformConfig['Generic']
+
+                    // Extract YouTube video ID for embed
+                    const ytMatch = sm?.source_url?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n]+)/)
+                    const ytId = ytMatch ? ytMatch[1] : null
+
+                    return (
                     <div className="mt-6 space-y-4">
+                      {/* ===== VIDEO PLAYER + FUENTE ORIGINAL ===== */}
+                      <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: '#12161F', borderColor: '#1E2433' }}>
+                        {/* Video player */}
+                        {ytId ? (
+                          <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                            <iframe
+                              className="absolute top-0 left-0 w-full h-full"
+                              src={`https://www.youtube.com/embed/${ytId}`}
+                              title="Video player"
+                              frameBorder="0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-full flex items-center justify-center" style={{ backgroundColor: '#0B0E14', height: '200px' }}>
+                            <div className="text-center">
+                              <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-2" style={{ backgroundColor: pc.bg }}>
+                                <span className="text-2xl">{pc.icon}</span>
+                              </div>
+                              <p className="text-xs" style={{ color: '#7A8290' }}>Video analizado</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Source info */}
+                        {sm && (
+                          <div className="p-4">
+                            <div className="flex items-start gap-3">
+                              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: pc.bg }}>
+                                <span className="text-white font-bold text-sm">{pc.icon}</span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-white">{sm.title}</p>
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                  <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ backgroundColor: pc.bg + '20', color: pc.color }}>
+                                    {pc.label}
+                                  </span>
+                                  <span className="text-xs" style={{ color: '#7A8290' }}>·</span>
+                                  <span className="text-xs font-medium text-white">{sm.channel}</span>
+                                  {sm.is_verified ? (
+                                    <span className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#00C89620', color: '#00C896' }}>
+                                      <CheckCircle2 className="w-3 h-3" /> Verificado
+                                    </span>
+                                  ) : (
+                                    <span className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#E8A33D20', color: '#E8A33D' }}>
+                                      <AlertTriangle className="w-3 h-3" /> No verificado
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-3 mt-2 text-xs" style={{ color: '#7A8290' }}>
+                                  {sm.view_count > 0 && <span>{sm.view_count.toLocaleString()} vistas</span>}
+                                  {sm.upload_date && <span>{sm.upload_date}</span>}
+                                  {sm.duration > 0 && <span>{Math.floor(sm.duration / 60)}:{String(sm.duration % 60).padStart(2, '0')}</span>}
+                                </div>
+                              </div>
+                            </div>
+                            {!sm.is_verified && (
+                              <div className="mt-3 rounded-lg p-3 flex items-start gap-2" style={{ backgroundColor: '#E8A33D10' }}>
+                                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#E8A33D' }} />
+                                <p className="text-xs" style={{ color: '#E8A33D' }}>
+                                  <strong>Alerta:</strong> Este canal no está verificado oficialmente. Verifica la autenticidad antes de compartir.
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
                       {/* ===== BANNER DE VEREDICTO ===== */}
-                      <div className="rounded-xl border-2 p-5" style={{
+                      <div className="rounded-xl border-2 p-4" style={{
                         backgroundColor: analysisResult.is_ai_generated ? '#1E1416' : '#0E1A14',
                         borderColor: analysisResult.is_ai_generated ? '#E85D5D' : '#00C896'
                       }}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             {analysisResult.is_ai_generated ? (
-                              <XCircle className="w-8 h-8" style={{ color: '#E85D5D' }} />
+                              <XCircle className="w-7 h-7" style={{ color: '#E85D5D' }} />
                             ) : (
-                              <CheckCircle2 className="w-8 h-8" style={{ color: '#00C896' }} />
+                              <CheckCircle2 className="w-7 h-7" style={{ color: '#00C896' }} />
                             )}
                             <div>
-                              <h4 className="text-lg font-bold text-white">
+                              <h4 className="text-base font-bold text-white">
                                 {analysisResult.is_ai_generated ? 'Contenido Sospechoso' : 'Contenido Auténtico'}
                               </h4>
                               <p className="text-xs" style={{ color: '#7A8290' }}>
-                                Análisis completado en {analysisResult.processing_time?.toFixed(1) || 'N/A'}s
+                                Procesado en {analysisResult.processing_time?.toFixed(1) || 'N/A'}s
                               </p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="text-3xl font-bold font-mono" style={{ color: analysisResult.is_ai_generated ? '#E85D5D' : '#00C896' }}>
+                            <div className="text-2xl font-bold font-mono" style={{ color: analysisResult.is_ai_generated ? '#E85D5D' : '#00C896' }}>
                               {(analysisResult.confidence * 100).toFixed(0)}%
                             </div>
                             <div className="text-xs" style={{ color: '#7A8290' }}>Fiabilidad</div>
                           </div>
                         </div>
-                        {/* Barra de progreso */}
-                        <div className="mt-3 h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#0B0E14' }}>
-                          <div
-                            className="h-full rounded-full transition-all duration-1000"
-                            style={{
-                              width: `${analysisResult.confidence * 100}%`,
-                              backgroundColor: analysisResult.is_ai_generated ? '#E85D5D' : '#00C896'
-                            }}
-                          />
+                        <div className="mt-2 h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#0B0E14' }}>
+                          <div className="h-full rounded-full transition-all duration-1000" style={{
+                            width: `${analysisResult.confidence * 100}%`,
+                            backgroundColor: analysisResult.is_ai_generated ? '#E85D5D' : '#00C896'
+                          }} />
                         </div>
                       </div>
 
-                      {/* ===== FUENTE ORIGINAL ===== */}
-                      {analysisResult.metadata?.source_metadata && (
+                      {/* ===== RESUMEN DEL DISCURSO ===== */}
+                      {totalSegs > 0 && (
                         <div className="rounded-xl border p-5" style={{ backgroundColor: '#12161F', borderColor: '#1E2433' }}>
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#E85D5D' }} />
-                            <h4 className="text-sm font-bold text-white tracking-wide">FUENTE ORIGINAL</h4>
+                          <div className="flex items-center gap-2 mb-4">
+                            <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#00C896' }} />
+                            <h4 className="text-sm font-bold text-white tracking-wide">RESUMEN DEL DISCURSO</h4>
                           </div>
-                          <div className="flex items-start gap-3">
-                            <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#E85D5D' }}>
-                              <span className="text-white font-bold text-lg">▶</span>
+
+                          {/* Stats grid */}
+                          <div className="grid grid-cols-4 gap-3 mb-4">
+                            <div className="rounded-lg p-3 text-center" style={{ backgroundColor: '#0B0E14' }}>
+                              <div className="text-xl font-bold font-mono text-white">{totalSegs}</div>
+                              <div className="text-xs mt-1" style={{ color: '#7A8290' }}>Afirmaciones</div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-white truncate">
-                                {analysisResult.metadata.source_metadata.title}
-                              </p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="text-xs" style={{ color: '#7A8290' }}>Canal:</span>
-                                <span className="text-xs font-medium text-white">{analysisResult.metadata.source_metadata.channel}</span>
-                                {analysisResult.metadata.source_metadata.is_verified ? (
-                                  <span className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#00C89620', color: '#00C896' }}>
-                                    <CheckCircle2 className="w-3 h-3" /> Verificado
-                                  </span>
-                                ) : (
-                                  <span className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#E8A33D20', color: '#E8A33D' }}>
-                                    <AlertTriangle className="w-3 h-3" /> No verificado
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-4 mt-2 text-xs" style={{ color: '#7A8290' }}>
-                                <span>📊 {analysisResult.metadata.source_metadata.view_count?.toLocaleString() || 0} vistas</span>
-                                <span>📅 {analysisResult.metadata.source_metadata.upload_date || 'N/A'}</span>
-                                <span>⏱ {analysisResult.metadata.source_metadata.duration ? `${Math.floor(analysisResult.metadata.source_metadata.duration / 60)}:${String(analysisResult.metadata.source_metadata.duration % 60).padStart(2, '0')}` : 'N/A'}</span>
-                              </div>
+                            <div className="rounded-lg p-3 text-center" style={{ backgroundColor: '#00C89610' }}>
+                              <div className="text-xl font-bold font-mono" style={{ color: '#00C896' }}>{verified}</div>
+                              <div className="text-xs mt-1" style={{ color: '#00C896' }}>Verificadas</div>
+                            </div>
+                            <div className="rounded-lg p-3 text-center" style={{ backgroundColor: '#E8A33D10' }}>
+                              <div className="text-xl font-bold font-mono" style={{ color: '#E8A33D' }}>{imprecise}</div>
+                              <div className="text-xs mt-1" style={{ color: '#E8A33D' }}>Imprecisas</div>
+                            </div>
+                            <div className="rounded-lg p-3 text-center" style={{ backgroundColor: '#E85D5D10' }}>
+                              <div className="text-xl font-bold font-mono" style={{ color: '#E85D5D' }}>{falseCount}</div>
+                              <div className="text-xs mt-1" style={{ color: '#E85D5D' }}>Falsas</div>
                             </div>
                           </div>
-                          {!analysisResult.metadata.source_metadata.is_verified && (
-                            <div className="mt-3 rounded-lg p-3 flex items-start gap-2" style={{ backgroundColor: '#E8A33D10' }}>
-                              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#E8A33D' }} />
-                              <p className="text-xs" style={{ color: '#E8A33D' }}>
-                                <strong>Alerta:</strong> Este canal no está verificado oficialmente. Verifica la autenticidad antes de compartir.
-                              </p>
-                            </div>
-                          )}
+
+                          {/* Stacked bar */}
+                          <div className="h-3 rounded-full overflow-hidden flex" style={{ backgroundColor: '#0B0E14' }}>
+                            {verified > 0 && <div style={{ width: `${(verified / totalSegs) * 100}%`, backgroundColor: '#00C896' }} />}
+                            {imprecise > 0 && <div style={{ width: `${(imprecise / totalSegs) * 100}%`, backgroundColor: '#E8A33D' }} />}
+                            {falseCount > 0 && <div style={{ width: `${(falseCount / totalSegs) * 100}%`, backgroundColor: '#E85D5D' }} />}
+                            {unverified > 0 && <div style={{ width: `${(unverified / totalSegs) * 100}%`, backgroundColor: '#7A8290' }} />}
+                          </div>
+
+                          {/* Legend */}
+                          <div className="flex items-center gap-4 mt-3 flex-wrap">
+                            <span className="flex items-center gap-1.5 text-xs" style={{ color: '#7A8290' }}>
+                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#00C896' }} /> Verificadas
+                            </span>
+                            <span className="flex items-center gap-1.5 text-xs" style={{ color: '#7A8290' }}>
+                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#E8A33D' }} /> Imprecisas
+                            </span>
+                            <span className="flex items-center gap-1.5 text-xs" style={{ color: '#7A8290' }}>
+                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#E85D5D' }} /> Falsas
+                            </span>
+                            <span className="flex items-center gap-1.5 text-xs" style={{ color: '#7A8290' }}>
+                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#7A8290' }} /> Sin verificar
+                            </span>
+                          </div>
                         </div>
                       )}
 
@@ -731,170 +833,92 @@ function App() {
                             <h4 className="text-sm font-bold text-white tracking-wide">TRANSCRIPCIÓN + VERIFICACIÓN</h4>
                           </div>
                           <div className="space-y-3">
-                            {analysisResult.content_analysis.transcription.segment_verifications?.length > 0 ? (
-                              analysisResult.content_analysis.transcription.segment_verifications.slice(0, 6).map((seg, idx) => {
-                                const minutes = Math.floor(seg.start / 60)
-                                const seconds = Math.floor(seg.start % 60)
-                                const timestamp = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-                                
-                                const labelColors = {
-                                  'FALSO': '#E85D5D',
-                                  'IMPRECISO': '#E8A33D',
-                                  'ENGAÑOSO': '#E8A33D',
-                                  'VERIFICADO': '#00C896',
-                                  'DISPUTADO': '#3B82F6',
-                                  'SIN_VERIFICAR': '#7A8290'
-                                }
-                                const color = labelColors[seg.label] || '#7A8290'
-                                
-                                return (
-                                  <div key={idx} className="flex gap-3 pb-3" style={{ borderBottom: idx < 5 ? '1px solid #1E2433' : 'none' }}>
-                                    <div className="flex flex-col items-center flex-shrink-0">
-                                      <span className="text-xs font-mono font-bold" style={{ color: '#00C896' }}>{timestamp}</span>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm leading-relaxed mb-1.5" style={{ color: '#E8ECF1' }}>
-                                        "{seg.text}"
-                                      </p>
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="text-xs px-2 py-0.5 rounded font-bold" style={{
-                                          backgroundColor: color + '20',
-                                          color: color,
-                                          border: `1px solid ${color}40`
-                                        }}>
-                                          {seg.label}
-                                        </span>
-                                        {seg.source !== 'N/A' && (
-                                          <span className="text-xs" style={{ color: '#7A8290' }}>
-                                            ↔ {seg.source}
-                                          </span>
-                                        )}
-                                        {seg.fact_checks_found > 0 && (
-                                          <span className="text-xs" style={{ color: '#7A8290' }}>
-                                            ({seg.fact_checks_found} verificaciones)
-                                          </span>
-                                        )}
-                                      </div>
+                            {segVs.length > 0 ? segVs.slice(0, 6).map((seg, idx) => {
+                              const minutes = Math.floor(seg.start / 60)
+                              const seconds = Math.floor(seg.start % 60)
+                              const timestamp = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+                              const labelColors = {
+                                'FALSO': '#E85D5D',
+                                'IMPRECISO': '#E8A33D',
+                                'ENGAÑOSO': '#E8A33D',
+                                'VERIFICADO': '#00C896',
+                                'DISPUTADO': '#3B82F6',
+                                'SIN_VERIFICAR': '#7A8290'
+                              }
+                              const color = labelColors[seg.label] || '#7A8290'
+                              return (
+                                <div key={idx} className="flex gap-3 pb-3" style={{ borderBottom: idx < 5 ? '1px solid #1E2433' : 'none' }}>
+                                  <span className="text-xs font-mono font-bold flex-shrink-0 pt-0.5" style={{ color: '#00C896' }}>{timestamp}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm leading-relaxed mb-1.5" style={{ color: '#E8ECF1' }}>"{seg.text}"</p>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-xs px-2 py-0.5 rounded font-bold" style={{
+                                        backgroundColor: color + '20', color: color, border: `1px solid ${color}40`
+                                      }}>{seg.label}</span>
+                                      {seg.source !== 'N/A' && <span className="text-xs" style={{ color: '#7A8290' }}>↔ {seg.source}</span>}
+                                      {seg.fact_checks_found > 0 && <span className="text-xs" style={{ color: '#7A8290' }}>({seg.fact_checks_found} verif.)</span>}
                                     </div>
                                   </div>
-                                )
-                              })
-                            ) : analysisResult.content_analysis.transcription.segments?.slice(0, 6).map((segment, idx) => {
+                                </div>
+                              )
+                            }) : segs.slice(0, 6).map((segment, idx) => {
                               const minutes = Math.floor(segment.start / 60)
                               const seconds = Math.floor(segment.start % 60)
                               const timestamp = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-                              
                               return (
                                 <div key={idx} className="flex gap-3 pb-3" style={{ borderBottom: idx < 5 ? '1px solid #1E2433' : 'none' }}>
-                                  <span className="text-xs font-mono font-bold flex-shrink-0" style={{ color: '#00C896' }}>{timestamp}</span>
+                                  <span className="text-xs font-mono font-bold flex-shrink-0 pt-0.5" style={{ color: '#00C896' }}>{timestamp}</span>
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm leading-relaxed" style={{ color: '#E8ECF1' }}>
-                                      "{segment.text?.trim()}"
-                                    </p>
-                                    <span className="text-xs px-2 py-0.5 rounded font-bold" style={{
-                                      backgroundColor: '#7A829020',
-                                      color: '#7A8290',
-                                      border: '1px solid #7A829040'
-                                    }}>
-                                      SIN_VERIFICAR
-                                    </span>
+                                    <p className="text-sm leading-relaxed" style={{ color: '#E8ECF1' }}>"{segment.text?.trim()}"</p>
+                                    <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ backgroundColor: '#7A829020', color: '#7A8290', border: '1px solid #7A829040' }}>SIN_VERIFICAR</span>
                                   </div>
                                 </div>
                               )
                             }) || (
                               <div className="flex gap-3 pb-3">
                                 <span className="text-xs font-mono font-bold flex-shrink-0" style={{ color: '#00C896' }}>00:00</span>
-                                <p className="text-sm leading-relaxed" style={{ color: '#E8ECF1' }}>
-                                  {analysisResult.content_analysis.transcription.text}
-                                </p>
+                                <p className="text-sm leading-relaxed" style={{ color: '#E8ECF1' }}>{analysisResult.content_analysis.transcription.text}</p>
                               </div>
                             )}
                           </div>
                         </div>
                       )}
 
-                      {/* ===== ANÁLISIS DE DESINFORMACIÓN ===== */}
-                      {analysisResult.content_analysis?.fake_news && (
-                        <div className="rounded-xl border p-5" style={{ backgroundColor: '#12161F', borderColor: '#1E2433' }}>
-                          <div className="flex items-center gap-2 mb-4">
-                            <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#E8A33D' }} />
-                            <h4 className="text-sm font-bold text-white tracking-wide">ANÁLISIS DE DESINFORMACIÓN</h4>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="rounded-lg p-4" style={{ backgroundColor: '#0B0E14' }}>
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs" style={{ color: '#7A8290' }}>¿Es desinformación?</span>
-                              </div>
-                              <span className={`text-2xl font-bold ${analysisResult.content_analysis.fake_news.is_fake_news ? 'text-red-500' : 'text-green-500'}`}>
-                                {analysisResult.content_analysis.fake_news.is_fake_news ? 'SÍ' : 'NO'}
-                              </span>
-                            </div>
-                            <div className="rounded-lg p-4" style={{ backgroundColor: '#0B0E14' }}>
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs" style={{ color: '#7A8290' }}>Nivel de confianza</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#1E2433' }}>
-                                  <div
-                                    className="h-full rounded-full"
-                                    style={{
-                                      width: `${analysisResult.content_analysis.fake_news.confidence * 100}%`,
-                                      backgroundColor: '#E8A33D'
-                                    }}
-                                  />
-                                </div>
-                                <span className="text-sm font-mono font-bold" style={{ color: '#E8A33D' }}>
-                                  {(analysisResult.content_analysis.fake_news.confidence * 100).toFixed(0)}%
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          {analysisResult.content_analysis.fake_news.details && (
-                            <p className="text-xs mt-3 leading-relaxed" style={{ color: '#7A8290' }}>
-                              {analysisResult.content_analysis.fake_news.details}
-                            </p>
-                          )}
-                        </div>
-                      )}
-
                       {/* ===== VERIFICACIONES RELACIONADAS ===== */}
-                      {analysisResult.content_analysis?.fact_checking?.fact_checks_found > 0 && (
+                      {fcCount > 0 && (
                         <div className="rounded-xl border p-5" style={{ backgroundColor: '#12161F', borderColor: '#1E2433' }}>
                           <div className="flex items-center gap-2 mb-4">
                             <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#3B82F6' }} />
                             <h4 className="text-sm font-bold text-white tracking-wide">VERIFICACIONES RELACIONADAS</h4>
-                            <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: '#3B82F620', color: '#3B82F6' }}>
-                              {analysisResult.content_analysis.fact_checking.fact_checks_found} encontradas
-                            </span>
+                            <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: '#3B82F620', color: '#3B82F6' }}>{fcCount} encontradas</span>
                           </div>
                           <div className="space-y-3">
-                            {analysisResult.content_analysis.fact_checking.fact_checks?.slice(0, 4).map((fc, idx) => (
-                              <div key={idx} className="rounded-lg p-3" style={{ backgroundColor: '#0B0E14' }}>
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="flex-1">
-                                    <p className="text-sm font-medium" style={{ color: '#E8ECF1' }}>{fc.title}</p>
-                                    <div className="flex items-center gap-3 mt-2">
-                                      <span className="text-xs" style={{ color: '#7A8290' }}>📰 {fc.publisher}</span>
-                                      <span className="text-xs px-2 py-0.5 rounded font-semibold" style={{
-                                        backgroundColor: fc.rating?.toLowerCase().includes('false') ? '#E85D5D20' : '#00C89620',
-                                        color: fc.rating?.toLowerCase().includes('false') ? '#E85D5D' : '#00C896'
-                                      }}>
-                                        {fc.rating}
-                                      </span>
-                                    </div>
+                            {fcs.slice(0, 4).map((fc, idx) => {
+                              const ratingLower = (fc.rating || '').toLowerCase()
+                              const isFalse = ratingLower.includes('false') || ratingLower.includes('falso')
+                              const isTrue = ratingLower.includes('true') || ratingLower.includes('verdadero')
+                              const ratingColor = isFalse ? '#E85D5D' : isTrue ? '#00C896' : '#E8A33D'
+                              return (
+                                <div key={idx} className="rounded-lg p-3" style={{ backgroundColor: '#0B0E14' }}>
+                                  <p className="text-sm font-medium mb-2" style={{ color: '#E8ECF1' }}>{fc.title}</p>
+                                  <div className="flex items-center gap-3 flex-wrap">
+                                    <span className="text-xs" style={{ color: '#7A8290' }}>📰 {fc.publisher}</span>
+                                    <span className="text-xs px-2 py-0.5 rounded font-semibold" style={{ backgroundColor: ratingColor + '20', color: ratingColor }}>
+                                      {fc.rating}
+                                    </span>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
+                              )
+                            })}
                           </div>
                         </div>
                       )}
 
-                      {/* ===== METADATA TÉCNICA ===== */}
+                      {/* ===== INFO TÉCNICA ===== */}
                       <div className="rounded-xl border p-4" style={{ backgroundColor: '#12161F', borderColor: '#1E2433' }}>
                         <div className="flex items-center gap-2 mb-3">
                           <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#7A8290' }} />
-                          <h4 className="text-xs font-bold text-white tracking-wide">INFORMACIÓN TÉCNICA</h4>
+                          <h4 className="text-xs font-bold text-white tracking-wide">INFO TÉCNICA</h4>
                         </div>
                         <div className="grid grid-cols-3 gap-3 text-xs">
                           <div className="rounded-lg p-2.5" style={{ backgroundColor: '#0B0E14' }}>
@@ -903,9 +927,7 @@ function App() {
                           </div>
                           <div className="rounded-lg p-2.5" style={{ backgroundColor: '#0B0E14' }}>
                             <p style={{ color: '#7A8290' }}>Duración</p>
-                            <p className="font-mono font-bold text-white mt-1">
-                              {analysisResult.metadata?.duration ? `${analysisResult.metadata.duration.toFixed(1)}s` : 'N/A'}
-                            </p>
+                            <p className="font-mono font-bold text-white mt-1">{analysisResult.metadata?.duration ? `${analysisResult.metadata.duration.toFixed(1)}s` : 'N/A'}</p>
                           </div>
                           <div className="rounded-lg p-2.5" style={{ backgroundColor: '#0B0E14' }}>
                             <p style={{ color: '#7A8290' }}>Procesado</p>
@@ -914,7 +936,8 @@ function App() {
                         </div>
                       </div>
                     </div>
-                  )}
+                    )
+                  })()}
 
                   {/* Error */}
                   {error && (
