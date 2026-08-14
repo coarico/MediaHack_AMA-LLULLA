@@ -1,0 +1,16 @@
+# Dependencias de la parte de video/ML (Programador 2).
+# El companero debe fusionar esto con sus dependencias de audio en el
+# requirements.txt compartido del microservicio.
+
+fastapi>=0.115
+python-multipart>=0.0.9
+opencv-python>=4.9
+numpy>=1.26
+pillow>=10.0
+torch>=2.2
+transformers>=4.40
+
+# Testing
+pytest>=8.0
+pytest-asyncio>=0.23
+httpx>=0.27
