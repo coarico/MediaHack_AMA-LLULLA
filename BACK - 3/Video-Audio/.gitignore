@@ -50,3 +50,12 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+
+# Google Credentials (NEVER COMMIT)
+google-credentials.json
+*-credentials.json
+
+# Test files
+test_sample.*
+test_*.py
+!tests/test_*.py

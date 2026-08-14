@@ -34,6 +34,19 @@ class Settings(BaseSettings):
         "https://coarico.github.io"
     ]
     
+    # Google APIs
+    google_application_credentials: str = "./google-credentials.json"
+    google_fact_check_api_key: str = ""
+    
+    # Speech-to-Text
+    whisper_model: str = "base"  # tiny, base, small, medium, large
+    whisper_language: str = "es"
+    
+    # Content Analysis
+    enable_fact_checking: bool = True
+    enable_fake_news_detection: bool = True
+    fake_news_threshold: float = 0.7
+    
     class Config:
         env_file = ".env"
         case_sensitive = False

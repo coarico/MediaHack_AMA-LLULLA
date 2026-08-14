@@ -30,6 +30,8 @@ class AudioAnalysisDetails(BaseModel):
     spectral_score: float = Field(..., ge=0.0, le=1.0, description="Spectral analysis score")
     pitch_consistency: float = Field(..., ge=0.0, le=1.0, description="Pitch consistency score")
     noise_detection: float = Field(..., ge=0.0, le=1.0, description="Artificial noise detection")
+    ml_score: Optional[float] = Field(None, ge=0.0, le=1.0, description="Machine learning deepfake score")
+    edit_detection: Optional[float] = Field(None, ge=0.0, le=1.0, description="Manual edit/cut detection score")
     artifacts: List[ArtifactDetection] = Field(default_factory=list)
 
 
@@ -39,6 +41,51 @@ class VideoAnalysisDetails(BaseModel):
     frame_artifacts: Optional[float] = Field(None, ge=0.0, le=1.0)
     compression_anomalies: Optional[float] = Field(None, ge=0.0, le=1.0)
     artifacts: List[ArtifactDetection] = Field(default_factory=list)
+
+
+class TranscriptionResult(BaseModel):
+    """Speech-to-text transcription results"""
+    text: str = Field(..., description="Transcribed text content")
+    language: Optional[str] = Field(None, description="Detected language")
+    duration: Optional[float] = Field(None, description="Audio duration in seconds")
+    segments: Optional[List[dict]] = Field(None, description="Detailed transcription segments")
+
+
+class FactCheckReview(BaseModel):
+    """Individual fact-check review"""
+    claim_text: str = Field(..., description="The claim being checked")
+    claimant: Optional[str] = Field(None, description="Source of the claim")
+    publisher: Optional[str] = Field(None, description="Fact-check publisher")
+    url: Optional[str] = Field(None, description="URL to fact-check article")
+    title: Optional[str] = Field(None, description="Title of fact-check")
+    rating: Optional[str] = Field(None, description="Rating given by fact-checker")
+
+
+class FactCheckResult(BaseModel):
+    """Fact-checking results"""
+    claim: str = Field(..., description="Claim that was checked")
+    fact_checks_found: int = Field(0, description="Number of fact-checks found")
+    fact_checks: List[FactCheckReview] = Field(default_factory=list)
+    status: Optional[str] = Field(None, description="API status")
+
+
+class FakeNewsAnalysis(BaseModel):
+    """Fake news content analysis results"""
+    is_fake_news: bool = Field(..., description="Whether content is classified as fake news")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score")
+    label: Optional[str] = Field(None, description="Classification label")
+    method: Optional[str] = Field(None, description="Method used (ml or heuristic)")
+    details: Optional[str] = Field(None, description="Detailed analysis description")
+    indicators_found: Optional[int] = Field(None, description="Number of fake news indicators")
+
+
+class ContentAnalysisResult(BaseModel):
+    """Complete content analysis including transcription, fake news and fact-checking"""
+    has_transcription: bool = Field(False, description="Whether transcription was successful")
+    transcription: Optional[TranscriptionResult] = None
+    fake_news: Optional[FakeNewsAnalysis] = None
+    fact_checking: Optional[FactCheckResult] = None
+    extracted_claims: List[str] = Field(default_factory=list, description="Key claims extracted")
 
 
 class MediaMetadata(BaseModel):
@@ -55,10 +102,13 @@ class MediaMetadata(BaseModel):
 class AnalysisResponse(BaseModel):
     """Response model for analysis results"""
     is_ai_generated: bool = Field(..., description="Whether the media is AI-generated")
+    is_manipulated: Optional[bool] = Field(False, description="Whether the media is manipulated")
+    is_misinformation: Optional[bool] = Field(False, description="Whether the content is misinformation")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Overall confidence score")
     analysis_type: Literal["audio", "video", "both"] = Field(..., description="Type of analysis performed")
     audio_details: Optional[AudioAnalysisDetails] = None
     video_details: Optional[VideoAnalysisDetails] = None
+    content_analysis: Optional[ContentAnalysisResult] = None
     metadata: MediaMetadata
     analyzed_at: datetime = Field(default_factory=datetime.utcnow)
     processing_time: float = Field(..., description="Processing time in seconds")

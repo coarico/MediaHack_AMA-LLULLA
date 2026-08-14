@@ -2,7 +2,8 @@ import librosa
 import numpy as np
 import soundfile as sf
 from pathlib import Path
-from typing import List
+from typing import List, Optional
+import time
 
 from app.models import (
     AnalysisResponse,
@@ -47,27 +48,40 @@ class AudioAnalyzer:
         spectral_score = self._analyze_spectral_features(audio_data, sr)
         pitch_score = self._analyze_pitch_consistency(audio_data, sr)
         noise_score = self._detect_artificial_noise(audio_data, sr)
+        edit_score = self._detect_manual_edits(audio_data, sr)
         
         # Detect artifacts
         artifacts = self._detect_artifacts(audio_data, sr)
         
-        # Calculate overall confidence
-        # Higher scores indicate more likely AI-generated
-        overall_score = (spectral_score + pitch_score + noise_score) / 3
+        # ML deepfake score (optional, improves accuracy)
+        ml_score = self._ml_deepfake_score(file_path)
+        
+        # Combine heuristic and ML scores
+        heuristic_score = (spectral_score + pitch_score + noise_score) / 3
+        
+        if ml_score is not None:
+            # Weight: 60% ML, 40% heuristics
+            overall_score = (ml_score * 0.6) + (heuristic_score * 0.4)
+        else:
+            overall_score = heuristic_score
         
         # Determine if AI-generated based on threshold
         is_ai_generated = overall_score >= settings.audio_confidence_threshold
+        is_manipulated = (overall_score >= 0.5) or (edit_score >= 0.6)
         
         # Build response
         audio_details = AudioAnalysisDetails(
             spectral_score=spectral_score,
             pitch_consistency=pitch_score,
             noise_detection=noise_score,
+            ml_score=ml_score,
+            edit_detection=edit_score,
             artifacts=artifacts
         )
         
         return AnalysisResponse(
             is_ai_generated=is_ai_generated,
+            is_manipulated=is_manipulated,
             confidence=overall_score,
             analysis_type="audio",
             audio_details=audio_details,
@@ -228,4 +242,61 @@ class AudioAnalyzer:
                 description="Abrupt spectral changes detected (possible AI artifact)"
             ))
         
+        # Detect manual edits/cuts
+        edit_score = self._detect_manual_edits(audio_data, sr)
+        if edit_score > 0.4:
+            artifacts.append(ArtifactDetection(
+                type="manual_edit_suspected",
+                confidence=min(edit_score, 1.0),
+                description="Audio transitions suggest possible manual editing"
+            ))
+        
         return artifacts
+    
+    def _detect_manual_edits(self, audio_data: np.ndarray, sr: int) -> float:
+        """
+        Detect possible manual edits or cuts in audio
+        
+        Returns score 0-1 where 1 = highly likely edited
+        """
+        # 1. Detect abrupt changes in spectral flux (cuts between segments)
+        spectral_flux = librosa.onset.onset_strength(y=audio_data, sr=sr)
+        
+        # Find peaks in spectral flux
+        from scipy.signal import find_peaks
+        peaks, properties = find_peaks(spectral_flux, height=np.mean(spectral_flux) * 3.0, distance=sr//10)
+        
+        # 2. Detect noise floor changes (different recording environments)
+        hop_length = 512
+        frames = len(audio_data) // hop_length
+        segment_size = sr  # 1 second
+        num_segments = len(audio_data) // segment_size
+        
+        if num_segments < 3:
+            return 0.0
+        
+        noise_levels = []
+        for i in range(num_segments):
+            start = i * segment_size
+            end = start + segment_size
+            segment = audio_data[start:end]
+            noise_level = np.std(segment)
+            noise_levels.append(noise_level)
+        
+        noise_variation = np.std(noise_levels) / (np.mean(noise_levels) + 1e-10)
+        
+        # 3. Combine scores
+        peak_density = min(len(peaks) / (len(audio_data) / sr) * 2.0, 1.0)
+        noise_score = min(noise_variation, 1.0)
+        
+        edit_score = (peak_density * 0.5 + noise_score * 0.5)
+        return float(edit_score)
+    
+    def _ml_deepfake_score(self, file_path: Path) -> Optional[float]:
+        """
+        Placeholder for ML deepfake score
+        
+        Currently uses heuristics. Future improvement: load real audio
+        deepfake detection model from Hugging Face.
+        """
+        return None

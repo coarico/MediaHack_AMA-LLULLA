@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { MessageCircle, X, Send, Link as LinkIcon, Upload, ClipboardList, Search, AlertTriangle, CheckCircle2, XCircle, Activity, Info, TrendingUp, BookOpen, Shield, Home } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
+import { analyzeUrl, analyzeAudio, analyzeVideo } from './services/api'
 
 function App() {
   const [activeView, setActiveView] = useState('home')
@@ -9,11 +10,15 @@ function App() {
   const [analyzing, setAnalyzing] = useState(false)
   const [urlValue, setUrlValue] = useState('')
   const [videoUrl, setVideoUrl] = useState('')
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [analysisResult, setAnalysisResult] = useState(null)
+  const [error, setError] = useState(null)
   const [messages, setMessages] = useState([
     { role: 'bot', text: 'Hola. Soy el asistente de AMA-LLU-IA. Puedes preguntarme sobre verificación de contenido electoral.' }
   ])
   const [inputMessage, setInputMessage] = useState('')
   const chatEndRef = useRef(null)
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -41,9 +46,44 @@ function App() {
     { titulo: 'Resultados preliminares disponibles', status: 'verificado', viralidad: 2100 }
   ]
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     setAnalyzing(true)
-    setTimeout(() => setAnalyzing(false), 2500)
+    setError(null)
+    setAnalysisResult(null)
+
+    try {
+      let result
+      
+      if (activeTab === 'link' && urlValue) {
+        result = await analyzeUrl(urlValue)
+      } else if (activeTab === 'video' && selectedFile) {
+        const fileType = selectedFile.type
+        if (fileType.startsWith('audio/')) {
+          result = await analyzeAudio(selectedFile)
+        } else if (fileType.startsWith('video/')) {
+          result = await analyzeVideo(selectedFile)
+        } else {
+          throw new Error('Tipo de archivo no soportado')
+        }
+      } else {
+        throw new Error('Por favor ingresa una URL o selecciona un archivo')
+      }
+
+      setAnalysisResult(result)
+    } catch (err) {
+      setError(err.message)
+      console.error('Error al analizar:', err)
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setSelectedFile(file)
+      setError(null)
+    }
   }
 
   const handleSendMessage = () => {
@@ -525,15 +565,22 @@ function App() {
                     }}
                     onMouseEnter={e => e.currentTarget.style.borderColor = '#00C896'}
                     onMouseLeave={e => e.currentTarget.style.borderColor = '#2A3142'}
+                    onClick={() => fileInputRef.current?.click()}
                   >
                     <Upload className="w-10 h-10 mx-auto mb-3" style={{ color: '#7A8290' }} />
                     <p className="text-sm mb-1" style={{ color: '#E8ECF1' }}>
-                      Arrastra un archivo o haz clic para seleccionar
+                      {selectedFile ? selectedFile.name : 'Arrastra un archivo o haz clic para seleccionar'}
                     </p>
                     <p className="text-xs font-mono" style={{ color: '#7A8290' }}>
-                      Video o audio · máx. 50MB
+                      {selectedFile ? `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB` : 'Video o audio · máx. 50MB'}
                     </p>
-                    <input type="file" accept="video/*,audio/*" className="hidden" />
+                    <input 
+                      ref={fileInputRef}
+                      type="file" 
+                      accept="video/*,audio/*" 
+                      className="hidden" 
+                      onChange={handleFileChange}
+                    />
                   </div>
 
                   <div className="flex items-center gap-3">
@@ -583,6 +630,61 @@ function App() {
                       </>
                     )}
                   </button>
+
+                  {/* Resultados del análisis */}
+                  {analysisResult && (
+                    <div className="mt-6 space-y-4">
+                      <div className="rounded-lg border p-4" style={{ backgroundColor: '#12161F', borderColor: '#1E2433' }}>
+                        <h4 className="text-sm font-semibold text-white mb-3">Resultados del Análisis</h4>
+                        
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs" style={{ color: '#7A8290' }}>¿Es IA generada?</span>
+                            <span className={`text-sm font-bold ${analysisResult.is_ai_generated ? 'text-red-500' : 'text-green-500'}`}>
+                              {analysisResult.is_ai_generated ? 'SÍ' : 'NO'}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs" style={{ color: '#7A8290' }}>Confianza</span>
+                            <span className="text-sm font-mono font-bold" style={{ color: '#00C896' }}>
+                              {(analysisResult.confidence * 100).toFixed(1)}%
+                            </span>
+                          </div>
+
+                          {analysisResult.content_analysis?.transcription && (
+                            <div className="mt-4 pt-4" style={{ borderTop: '1px solid #1E2433' }}>
+                              <h5 className="text-xs font-semibold text-white mb-2">Transcripción</h5>
+                              <p className="text-xs leading-relaxed" style={{ color: '#E8ECF1' }}>
+                                {analysisResult.content_analysis.transcription.text}
+                              </p>
+                            </div>
+                          )}
+
+                          {analysisResult.content_analysis?.fake_news && (
+                            <div className="mt-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs" style={{ color: '#7A8290' }}>¿Es desinformación?</span>
+                                <span className={`text-sm font-bold ${analysisResult.content_analysis.fake_news.is_fake_news ? 'text-red-500' : 'text-green-500'}`}>
+                                  {analysisResult.content_analysis.fake_news.is_fake_news ? 'SÍ' : 'NO'}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Error */}
+                  {error && (
+                    <div className="mt-4 rounded-lg border p-4" style={{ backgroundColor: '#1E1416', borderColor: '#E85D5D' }}>
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#E85D5D' }} />
+                        <p className="text-xs" style={{ color: '#E85D5D' }}>{error}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -14,6 +14,9 @@ from app.models import (
 )
 from app.services.audio_analyzer import AudioAnalyzer
 from app.services.video_analyzer import VideoAnalyzer
+from app.services.transcription_service import TranscriptionService
+from app.services.content_analyzer import ContentAnalyzer
+from app.services.fact_checker import FactChecker
 from app.utils.file_handler import FileHandler
 
 # Initialize FastAPI app
@@ -37,7 +40,67 @@ app.add_middleware(
 # Initialize services
 audio_analyzer = AudioAnalyzer()
 video_analyzer = VideoAnalyzer()
+transcription_service = TranscriptionService()
+content_analyzer = ContentAnalyzer()
+fact_checker = FactChecker()
 file_handler = FileHandler()
+
+
+async def perform_content_analysis(file_path: str, is_video: bool = False) -> dict:
+    """
+    Perform complete content analysis: transcription, fake news, fact-checking
+    
+    Args:
+        file_path: Path to media file
+        is_video: Whether the file is a video
+        
+    Returns:
+        dict: Content analysis results
+    """
+    try:
+        # Transcription
+        if is_video:
+            transcription = await transcription_service.transcribe_video(file_path)
+        else:
+            transcription = await transcription_service.transcribe(file_path)
+        
+        text = transcription.get('text', '')
+        
+        if not text:
+            return {
+                'has_transcription': False,
+                'transcription': None,
+                'fake_news': None,
+                'fact_checking': None,
+                'extracted_claims': []
+            }
+        
+        # Content analysis
+        fake_news = await content_analyzer.analyze_content(text)
+        
+        # Extract claims
+        extracted_claims = await content_analyzer.extract_claims(text)
+        
+        # Fact-checking
+        fact_checking = await fact_checker.analyze_text(text)
+        
+        return {
+            'has_transcription': True,
+            'transcription': transcription,
+            'fake_news': fake_news,
+            'fact_checking': fact_checking,
+            'extracted_claims': extracted_claims
+        }
+        
+    except Exception as e:
+        print(f"⚠️ Content analysis failed: {e}")
+        return {
+            'has_transcription': False,
+            'transcription': None,
+            'fake_news': None,
+            'fact_checking': None,
+            'extracted_claims': []
+        }
 
 
 @app.exception_handler(Exception)
@@ -90,6 +153,15 @@ async def analyze_audio_file(
             # Analyze audio
             result = await audio_analyzer.analyze(temp_path)
             
+            # Perform content analysis
+            content_analysis_dict = await perform_content_analysis(temp_path)
+            from app.models.schemas import ContentAnalysisResult
+            result.content_analysis = ContentAnalysisResult(**content_analysis_dict)
+            
+            # Update manipulation and misinformation flags
+            if content_analysis_dict.get('fake_news'):
+                result.is_misinformation = content_analysis_dict['fake_news'].get('is_fake_news', False)
+            
             # Calculate processing time
             processing_time = time.time() - start_time
             result.processing_time = processing_time
@@ -136,6 +208,15 @@ async def analyze_video_file(
             # Analyze video
             result = await video_analyzer.analyze(temp_path)
 
+            # Perform content analysis (extract audio + transcribe)
+            content_analysis_dict = await perform_content_analysis(temp_path, is_video=True)
+            from app.models.schemas import ContentAnalysisResult
+            result.content_analysis = ContentAnalysisResult(**content_analysis_dict)
+
+            # Update manipulation and misinformation flags
+            if content_analysis_dict.get('fake_news'):
+                result.is_misinformation = content_analysis_dict['fake_news'].get('is_fake_news', False)
+
             # Calculate processing time
             processing_time = time.time() - start_time
             result.processing_time = processing_time
@@ -181,15 +262,26 @@ async def analyze_from_url(request: AudioAnalysisRequest):
         
         try:
             # Determine file type and analyze
+            is_video = file_handler.is_video_file(temp_path)
+            
             if file_handler.is_audio_file(temp_path):
                 result = await audio_analyzer.analyze(temp_path)
-            elif file_handler.is_video_file(temp_path):
+            elif is_video:
                 result = await video_analyzer.analyze(temp_path)
             else:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Unsupported file type. Please provide an audio or video file."
                 )
+            
+            # Perform content analysis
+            content_analysis_dict = await perform_content_analysis(temp_path, is_video=is_video)
+            from app.models.schemas import ContentAnalysisResult
+            result.content_analysis = ContentAnalysisResult(**content_analysis_dict)
+            
+            # Update manipulation and misinformation flags
+            if content_analysis_dict.get('fake_news'):
+                result.is_misinformation = content_analysis_dict['fake_news'].get('is_fake_news', False)
             
             processing_time = time.time() - start_time
             result.processing_time = processing_time
