@@ -91,6 +91,7 @@ class FileHandler:
     async def download_from_url(self, url: str) -> Path:
         """
         Download file from URL to temporary directory
+        Supports YouTube and direct URLs
         
         Args:
             url: URL of the file
@@ -101,6 +102,11 @@ class FileHandler:
         Raises:
             Exception: If download fails
         """
+        # Check if it's a YouTube URL
+        if 'youtube.com' in url or 'youtu.be' in url:
+            return await self._download_youtube(url)
+        
+        # Regular URL download
         async with httpx.AsyncClient() as client:
             response = await client.get(url, follow_redirects=True, timeout=30.0)
             response.raise_for_status()
@@ -120,6 +126,35 @@ class FileHandler:
                 f.write(response.content)
             
             return file_path
+    
+    async def _download_youtube(self, url: str) -> Path:
+        """
+        Download video from YouTube using yt-dlp
+        
+        Args:
+            url: YouTube URL
+            
+        Returns:
+            Path to downloaded video file
+        """
+        import yt_dlp
+        
+        # Generate unique filename
+        unique_id = str(uuid.uuid4())
+        output_template = str(self.temp_dir / f"{unique_id}.%(ext)s")
+        
+        ydl_opts = {
+            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+            'outtmpl': output_template,
+            'quiet': True,
+            'no_warnings': True,
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            filename = ydl.prepare_filename(info)
+            
+        return Path(filename)
     
     def is_audio_file(self, file_path: Path) -> bool:
         """Check if file is an audio file based on extension"""

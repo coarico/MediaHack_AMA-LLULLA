@@ -63,15 +63,18 @@ function App() {
         } else if (fileType.startsWith('video/')) {
           result = await analyzeVideo(selectedFile)
         } else {
-          throw new Error('Tipo de archivo no soportado')
+          throw new Error('Tipo de archivo no soportado. Usa archivos de audio o video.')
         }
+      } else if (activeTab === 'video' && videoUrl) {
+        // Usar videoUrl si no hay archivo seleccionado
+        result = await analyzeUrl(videoUrl)
       } else {
         throw new Error('Por favor ingresa una URL o selecciona un archivo')
       }
 
       setAnalysisResult(result)
     } catch (err) {
-      setError(err.message)
+      setError(err.message || 'Error al procesar el análisis')
       console.error('Error al analizar:', err)
     } finally {
       setAnalyzing(false)
@@ -634,43 +637,110 @@ function App() {
                   {/* Resultados del análisis */}
                   {analysisResult && (
                     <div className="mt-6 space-y-4">
-                      <div className="rounded-lg border p-4" style={{ backgroundColor: '#12161F', borderColor: '#1E2433' }}>
-                        <h4 className="text-sm font-semibold text-white mb-3">Resultados del Análisis</h4>
+                      <div className="rounded-lg border p-5" style={{ backgroundColor: '#12161F', borderColor: '#1E2433' }}>
+                        <h4 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
+                          <CheckCircle2 className="w-5 h-5" style={{ color: '#00C896' }} />
+                          Resultados del Análisis
+                        </h4>
                         
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs" style={{ color: '#7A8290' }}>¿Es IA generada?</span>
-                            <span className={`text-sm font-bold ${analysisResult.is_ai_generated ? 'text-red-500' : 'text-green-500'}`}>
-                              {analysisResult.is_ai_generated ? 'SÍ' : 'NO'}
-                            </span>
-                          </div>
-                          
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs" style={{ color: '#7A8290' }}>Confianza</span>
-                            <span className="text-sm font-mono font-bold" style={{ color: '#00C896' }}>
-                              {(analysisResult.confidence * 100).toFixed(1)}%
-                            </span>
+                        <div className="space-y-4">
+                          {/* IA Generada */}
+                          <div className="rounded-lg p-3" style={{ backgroundColor: '#0B0E14' }}>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-white">¿Es IA generada?</span>
+                              <span className={`text-base font-bold ${analysisResult.is_ai_generated ? 'text-red-500' : 'text-green-500'}`}>
+                                {analysisResult.is_ai_generated ? 'SÍ' : 'NO'}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs" style={{ color: '#7A8290' }}>Confianza</span>
+                              <span className="text-sm font-mono font-bold" style={{ color: '#00C896' }}>
+                                {(analysisResult.confidence * 100).toFixed(1)}%
+                              </span>
+                            </div>
                           </div>
 
-                          {analysisResult.content_analysis?.transcription && (
-                            <div className="mt-4 pt-4" style={{ borderTop: '1px solid #1E2433' }}>
-                              <h5 className="text-xs font-semibold text-white mb-2">Transcripción</h5>
+                          {/* Transcripción */}
+                          {analysisResult.content_analysis?.has_transcription && analysisResult.content_analysis?.transcription?.text && (
+                            <div className="rounded-lg p-3" style={{ backgroundColor: '#0B0E14' }}>
+                              <h5 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                                <Activity className="w-4 h-4" style={{ color: '#00C896' }} />
+                                Transcripción del Audio
+                              </h5>
                               <p className="text-xs leading-relaxed" style={{ color: '#E8ECF1' }}>
                                 {analysisResult.content_analysis.transcription.text}
                               </p>
+                              {analysisResult.content_analysis.transcription.language && (
+                                <p className="text-xs mt-2" style={{ color: '#7A8290' }}>
+                                  Idioma: {analysisResult.content_analysis.transcription.language}
+                                </p>
+                              )}
                             </div>
                           )}
 
+                          {/* Fake News */}
                           {analysisResult.content_analysis?.fake_news && (
-                            <div className="mt-3">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs" style={{ color: '#7A8290' }}>¿Es desinformación?</span>
-                                <span className={`text-sm font-bold ${analysisResult.content_analysis.fake_news.is_fake_news ? 'text-red-500' : 'text-green-500'}`}>
+                            <div className="rounded-lg p-3" style={{ backgroundColor: '#0B0E14' }}>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium text-white">¿Es desinformación?</span>
+                                <span className={`text-base font-bold ${analysisResult.content_analysis.fake_news.is_fake_news ? 'text-red-500' : 'text-green-500'}`}>
                                   {analysisResult.content_analysis.fake_news.is_fake_news ? 'SÍ' : 'NO'}
                                 </span>
                               </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs" style={{ color: '#7A8290' }}>Confianza</span>
+                                <span className="text-sm font-mono font-bold" style={{ color: '#E8A33D' }}>
+                                  {(analysisResult.content_analysis.fake_news.confidence * 100).toFixed(1)}%
+                                </span>
+                              </div>
+                              {analysisResult.content_analysis.fake_news.details && (
+                                <p className="text-xs mt-2" style={{ color: '#7A8290' }}>
+                                  {analysisResult.content_analysis.fake_news.details}
+                                </p>
+                              )}
                             </div>
                           )}
+
+                          {/* Fact Checking */}
+                          {analysisResult.content_analysis?.fact_checking?.fact_checks_found > 0 && (
+                            <div className="rounded-lg p-3" style={{ backgroundColor: '#0B0E14' }}>
+                              <h5 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                                <Info className="w-4 h-4" style={{ color: '#00C896' }} />
+                                Verificaciones encontradas ({analysisResult.content_analysis.fact_checking.fact_checks_found})
+                              </h5>
+                              <div className="space-y-2">
+                                {analysisResult.content_analysis.fact_checking.fact_checks?.slice(0, 3).map((fc, idx) => (
+                                  <div key={idx} className="text-xs p-2 rounded" style={{ backgroundColor: '#12161F' }}>
+                                    <p className="font-medium" style={{ color: '#E8ECF1' }}>{fc.title}</p>
+                                    <p className="text-xs mt-1" style={{ color: '#7A8290' }}>
+                                      {fc.publisher} - {fc.rating}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Metadata */}
+                          <div className="rounded-lg p-3" style={{ backgroundColor: '#0B0E14' }}>
+                            <h5 className="text-xs font-semibold text-white mb-2">Información del archivo</h5>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <span style={{ color: '#7A8290' }}>Formato: </span>
+                                <span style={{ color: '#E8ECF1' }}>{analysisResult.metadata.format}</span>
+                              </div>
+                              {analysisResult.metadata.duration && (
+                                <div>
+                                  <span style={{ color: '#7A8290' }}>Duración: </span>
+                                  <span style={{ color: '#E8ECF1' }}>{analysisResult.metadata.duration.toFixed(1)}s</span>
+                                </div>
+                              )}
+                              <div>
+                                <span style={{ color: '#7A8290' }}>Procesado en: </span>
+                                <span style={{ color: '#E8ECF1' }}>{analysisResult.processing_time.toFixed(2)}s</span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
