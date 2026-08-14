@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { MessageCircle, X, Send, Link as LinkIcon, Upload, ClipboardList, Search, AlertTriangle, CheckCircle2, XCircle, Activity, Info, TrendingUp, BookOpen, Shield, Home } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
+import logo from './assets/logo.svg'
 
 function App() {
   const [activeView, setActiveView] = useState('home')
@@ -116,25 +117,32 @@ function App() {
             </div>
 
             <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <div
-                    className="w-2 h-2 rounded-full"
-                    style={{
-                      backgroundColor: scanColor,
-                      animation: 'pulse-dot 2s ease-in-out infinite'
-                    }}
-                  />
-                  <span className="text-xs font-mono uppercase tracking-widest" style={{ color: scanColor }}>
-                    {analyzing ? 'Analizando' : 'Sistema activo'}
-                  </span>
+              <div className="flex items-center gap-3">
+                <img
+                  src={logo}
+                  alt="AMA LLU-IA"
+                  className="w-11 h-11 md:w-[52px] md:h-[52px] flex-shrink-0"
+                />
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{
+                        backgroundColor: scanColor,
+                        animation: 'pulse-dot 2s ease-in-out infinite'
+                      }}
+                    />
+                    <span className="text-xs font-mono uppercase tracking-widest" style={{ color: scanColor }}>
+                      {analyzing ? 'Analizando' : 'Sistema activo'}
+                    </span>
+                  </div>
+                  <h1 className="text-2xl md:text-[28px] font-bold tracking-tight text-white leading-tight">
+                    AMA LLU-<span style={{ color: '#F5822B' }}>IA</span>
+                  </h1>
+                  <p className="text-sm mt-1 font-mono" style={{ color: '#7A8290' }}>
+                    Viralidad vs Veracidad
+                  </p>
                 </div>
-                <h1 className="text-2xl md:text-[28px] font-bold tracking-tight text-white leading-tight">
-                  AMA-LLU-IA
-                </h1>
-                <p className="text-sm mt-1 font-mono" style={{ color: '#7A8290' }}>
-                  Viralidad vs Veracidad
-                </p>
               </div>
 
               {/* Navigation */}
