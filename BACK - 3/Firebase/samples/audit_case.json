@@ -1,0 +1,35 @@
+{
+  "id": "audit_case_example_001",
+  "created_by": "auditor_user",
+  "title": "Caso de auditoria de contenido",
+  "status": "draft",
+  "analysis_ids": ["news_example_001", "media_example_001"],
+  "content_types": ["news_url", "video_file"],
+  "overall_risk": {
+    "score": 62,
+    "level": "medio",
+    "main_reasons": [
+      "Una pieza tiene fuente Radar y otra no tiene origen identificado.",
+      "El video requiere verificar fecha y lugar de grabacion."
+    ]
+  },
+  "findings": [
+    {
+      "title": "Falta contexto del video",
+      "severity": "alta",
+      "evidence_refs": ["media_example_001.audit.evidence_items.0"]
+    }
+  ],
+  "presentation": {
+    "summary": "Resumen ejecutivo del caso.",
+    "slides": [
+      {
+        "title": "Hallazgos principales",
+        "bullets": ["Riesgo medio.", "Falta origen del video."],
+        "evidence_refs": ["media_example_001"]
+      }
+    ]
+  },
+  "created_at": "2026-08-14T00:00:00Z",
+  "updated_at": "2026-08-14T00:00:00Z"
+}

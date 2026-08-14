@@ -1,0 +1,74 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(user_id) {
+      return isSignedIn() && request.auth.uid == user_id;
+    }
+
+    function isAuditor() {
+      return isSignedIn() && request.auth.token.role in ['auditor', 'admin'];
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.role == 'admin';
+    }
+
+    match /contentAnalyses/{analysisId} {
+      allow read: if resource.data.visibility == 'public' || isOwner(resource.data.user_id) || isAuditor();
+      allow create: if isSignedIn() && request.resource.data.user_id == request.auth.uid;
+      allow update: if isOwner(resource.data.user_id) || isAuditor();
+      allow delete: if isAdmin();
+    }
+
+    match /mediaAssets/{assetId} {
+      allow read: if isOwner(resource.data.user_id) || isAuditor();
+      allow create: if isSignedIn() && request.resource.data.user_id == request.auth.uid;
+      allow update: if isOwner(resource.data.user_id) || isAuditor();
+      allow delete: if isAdmin();
+    }
+
+    match /transcripts/{transcriptId} {
+      allow read: if isOwner(resource.data.user_id) || isAuditor();
+      allow create: if isSignedIn() && request.resource.data.user_id == request.auth.uid;
+      allow update: if isOwner(resource.data.user_id) || isAuditor();
+      allow delete: if isAdmin();
+    }
+
+    match /auditCases/{caseId} {
+      allow read: if isAuditor() || isOwner(resource.data.created_by);
+      allow create: if isAuditor();
+      allow update: if isAuditor();
+      allow delete: if isAdmin();
+    }
+
+    match /sources/{domain} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /radarMedia/{domain} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /keywords/{keywordId} {
+      allow read: if isSignedIn();
+      allow write: if isAuditor();
+    }
+
+    match /knowledgeSources/{sourceId} {
+      allow read: if isSignedIn();
+      allow write: if isAuditor();
+    }
+
+    match /knowledgeChunks/{chunkId} {
+      allow read: if isSignedIn();
+      allow write: if isAuditor();
+    }
+  }
+}

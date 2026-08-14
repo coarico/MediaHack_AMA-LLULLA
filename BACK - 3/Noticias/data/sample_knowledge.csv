@@ -1,0 +1,2 @@
+titulo,contenido,tipo,fuente
+Reporte de ejemplo,"Este registro contiene informacion de referencia para contrastar noticias. Incluye criterios de auditoria, fuentes, fechas y contexto para que el sistema pueda recuperar fragmentos relevantes sin enviar todo el CSV al LLM.",reporte,radar

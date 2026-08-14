@@ -1,0 +1,50 @@
+{
+  "definition": "Informacion relevante electoral es contenido que puede afectar la comprension, decision, confianza o participacion ciudadana en un proceso electoral.",
+  "subtopics": [
+    {
+      "id": "fraude_electoral",
+      "label": "Fraude electoral",
+      "keywords": ["fraude", "fraudulento", "votos falsos", "compra de votos", "manipulacion de votos", "conteo", "escrutinio", "urnas"]
+    },
+    {
+      "id": "narcotrafico",
+      "label": "Narcotrafico y campanas",
+      "keywords": ["narcotrafico", "narcotráfico", "cartel", "cartel", "financiacion ilegal", "financiación ilegal", "dinero ilegal"]
+    },
+    {
+      "id": "candidatos",
+      "label": "Candidatos y campanas",
+      "keywords": ["candidato", "candidata", "campana", "campaña", "partido", "coalicion", "coalición", "debate"]
+    },
+    {
+      "id": "autoridad_electoral",
+      "label": "Autoridad electoral",
+      "keywords": ["registraduria", "registraduría", "cne", "tribunal electoral", "jurado", "mesa de votacion", "mesa de votación"]
+    },
+    {
+      "id": "encuestas",
+      "label": "Encuestas e intencion de voto",
+      "keywords": ["encuesta", "sondeo", "intencion de voto", "intención de voto", "favorabilidad", "empate tecnico", "empate técnico"]
+    },
+    {
+      "id": "resultados",
+      "label": "Resultados electorales",
+      "keywords": ["resultado", "boletin", "boletín", "preconteo", "escrutinio", "ganador", "segunda vuelta"]
+    },
+    {
+      "id": "violencia_seguridad",
+      "label": "Violencia y seguridad electoral",
+      "keywords": ["amenaza", "violencia", "atentado", "seguridad", "orden publico", "orden público", "intimidacion", "intimidación"]
+    },
+    {
+      "id": "normas_calendario",
+      "label": "Normas y calendario electoral",
+      "keywords": ["ley electoral", "reforma electoral", "calendario electoral", "inscripcion", "inscripción", "inhabilidad", "sancion", "sanción"]
+    },
+    {
+      "id": "desinformacion",
+      "label": "Desinformacion electoral",
+      "keywords": ["desinformacion", "desinformación", "noticia falsa", "rumor", "montaje", "manipulado", "deepfake"]
+    }
+  ]
+}

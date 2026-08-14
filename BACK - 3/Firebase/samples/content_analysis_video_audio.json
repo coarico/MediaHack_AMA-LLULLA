@@ -1,0 +1,169 @@
+{
+  "id": "media_example_001",
+  "user_id": "demo_user",
+  "module": "video_audio",
+  "content_type": "video_file",
+  "visibility": "private",
+  "status": "completed",
+  "created_at": "2026-08-14T00:00:00Z",
+  "updated_at": "2026-08-14T00:00:00Z",
+  "source_input": {
+    "type": "file",
+    "original_url": null,
+    "final_url": null,
+    "submitted_title": "Video recibido para analisis"
+  },
+  "editorial_metadata": {
+    "platform": "desconocido",
+    "publisher_type": "desconocido",
+    "publication_date": null,
+    "thematic_axis": "Elecciones",
+    "thematic_tags": ["elecciones"],
+    "inferred": true,
+    "confidence": 0.4,
+    "notes": ["Contenido subido como archivo, requiere identificar origen."]
+  },
+  "content_attribution": {
+    "platform_name": "desconocida",
+    "platform_type": "desconocido",
+    "shared_by_account": null,
+    "shared_by_display_name": null,
+    "publisher_name": null,
+    "publisher_handle": null,
+    "publisher_type": "desconocido",
+    "source_domain": null,
+    "explanation": "Contenido subido como archivo, no asociado a una URL o cuenta."
+  },
+  "source_verification": {
+    "status": "unknown",
+    "source_name": null,
+    "matched_domain": null,
+    "verification_network": null,
+    "needs_additional_validation": true,
+    "recommendation": "Fuente desconocida. Se recomienda validacion adicional antes de tomar decisiones.",
+    "reasons": ["Contenido subido como archivo, requiere identificar origen."]
+  },
+  "information_relevance": {
+    "is_relevant": true,
+    "relevance_score": 35,
+    "domain": "electoral",
+    "definition_applied": "Informacion relevante electoral es contenido que puede afectar la comprension, decision, confianza o participacion ciudadana en un proceso electoral.",
+    "subtopics": ["candidatos"],
+    "relation_type": "contextual",
+    "reasons": ["El contenido menciona afirmaciones electorales."],
+    "how_it_relates": "Se relaciona de forma contextual porque contiene afirmaciones electorales en la transcripcion.",
+    "non_relevant_reason": null
+  },
+  "url_health": null,
+  "url_trust_assessment": null,
+  "url_risk_signals": [],
+  "source_classification": {
+    "is_radar_media": false,
+    "communication_type": "otro",
+    "source_name": null,
+    "matched_domain": null,
+    "confidence": 0.4,
+    "explanation": "Contenido subido como archivo, no asociado a medio Radar."
+  },
+  "article": null,
+  "content_quality": null,
+  "media": {
+    "asset_id": "asset_example_001",
+    "mime_type": "video/mp4",
+    "duration_seconds": 92,
+    "storage_path": "uploads/demo_user/video.mp4"
+  },
+  "transcription": {
+    "transcript_id": "transcript_example_001",
+    "language": "es",
+    "text": "Transcripcion del audio del video.",
+    "segments": [
+      {
+        "start": 0,
+        "end": 4.2,
+        "text": "Fragmento transcrito.",
+        "speaker": "speaker_1"
+      }
+    ]
+  },
+  "analysis": {
+    "summary": "Resumen de lo dicho en el video.",
+    "topic": "Tema principal",
+    "category": "video_audio",
+    "main_claims": ["Afirmacion dicha en el audio"],
+    "entities": {
+      "people": [],
+      "organizations": [],
+      "locations": []
+    },
+    "keywords": ["keyword"],
+    "search_queries": ["consulta para verificar afirmacion"],
+    "sentiment": {
+      "label": "neutral",
+      "score": 0.5
+    },
+    "bias_analysis": {
+      "score": 40,
+      "direction": "no determinado",
+      "explanation": "Requiere contraste externo."
+    },
+    "manipulation_signals": [],
+    "clickbait": {
+      "score": 0,
+      "evidence": []
+    },
+    "credibility": {
+      "score": 55,
+      "risk_level": "medio",
+      "explanation": "El contenido requiere verificar origen y afirmaciones."
+    },
+    "information_gaps": [
+      {
+        "missing_item": "Origen del video",
+        "why_it_matters": "Sin origen no se puede evaluar contexto ni fecha real.",
+        "suggested_verification": "Buscar primera publicacion, metadata y versiones relacionadas.",
+        "priority": "alta"
+      }
+    ],
+    "missing_context": ["Fecha y lugar de grabacion."],
+    "recommendation": "Contrastar afirmaciones con fuentes externas."
+  },
+  "verifiable_claims": [
+    {
+      "claim": "Afirmacion dicha en el audio",
+      "type": "evento",
+      "entities": [],
+      "needs_external_verification": true
+    }
+  ],
+  "related_news": [],
+  "cross_source_check": {
+    "related_coverage_count": 0,
+    "radar_media_coverage_count": 0,
+    "independent_sources_count": 0,
+    "contradictions_found": false,
+    "coverage_status": "no_related_coverage",
+    "notes": []
+  },
+  "risk_assessment": {
+    "score": 55,
+    "level": "medio",
+    "fraud_or_disinformation_risk": "medio",
+    "reasons": ["Falta origen del archivo.", "Falta contexto de grabacion."],
+    "cannot_conclude_fraud": true
+  },
+  "audit": {
+    "ready_for_audit": true,
+    "priority": "alta",
+    "evidence_summary": "Archivo transcrito con faltantes de origen y contexto.",
+    "evidence_items": [
+      {
+        "type": "gap",
+        "label": "Origen del video",
+        "value": "No se conoce la primera publicacion.",
+        "severity": "alta"
+      }
+    ],
+    "presentation_blocks": []
+  }
+}
