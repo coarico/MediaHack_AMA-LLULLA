@@ -75,9 +75,9 @@ class FactCheckReview(BaseModel):
 
 class FactCheckResult(BaseModel):
     """Fact-checking results"""
-    claim: str = Field(..., description="Claim that was checked")
+    claim: Optional[str] = Field(None, description="Claim that was checked")
     fact_checks_found: int = Field(0, description="Number of fact-checks found")
-    fact_checks: List[FactCheckReview] = Field(default_factory=list)
+    fact_checks: List[Dict] = Field(default_factory=list, description="Fact-check reviews (flexible)")
     status: Optional[str] = Field(None, description="API status")
 
 

@@ -119,97 +119,57 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen px-4 py-6 md:py-12" style={{ backgroundColor: '#0B0E14' }}>
+    <div className="min-h-screen px-4 py-6 md:py-12" style={{ backgroundColor: '#FFFFFF' }}>
       <div className="max-w-[1200px] mx-auto">
         {/* ===== HEADER ===== */}
         <header className="mb-6">
           <div
-            className="relative overflow-hidden rounded-xl border px-6 py-5"
+            className="rounded-xl border px-6 py-4"
             style={{
-              backgroundColor: '#12161F',
-              borderColor: '#1E2433'
+              backgroundColor: '#F8F9FA',
+              borderColor: '#E9ECEF'
             }}
           >
-            {/* Scan line */}
-            <div className="absolute top-0 left-0 right-0 h-[3px] overflow-hidden" style={{ backgroundColor: '#0B0E14' }}>
-              <div
-                className="absolute top-0 h-full w-1/3"
-                style={{
-                  background: `linear-gradient(90deg, transparent, ${scanColor}, transparent)`,
-                  animation: 'scanline 2.5s linear infinite'
-                }}
-              />
-            </div>
-
-            {/* Mini waveform bars */}
-            <div className="absolute top-3 right-4 flex items-end gap-[2px] h-4">
-              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(i => (
-                <div
-                  key={i}
-                  className="w-[2px] rounded-sm"
-                  style={{
-                    backgroundColor: scanColor,
-                    opacity: 0.4 + (i % 3) * 0.2,
-                    height: `${4 + (i % 4) * 3}px`,
-                    animation: `wave ${1 + (i % 3) * 0.3}s ease-in-out infinite`,
-                    animationDelay: `${i * 0.08}s`
-                  }}
-                />
-              ))}
-            </div>
-
             <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <div
-                    className="w-2 h-2 rounded-full"
-                    style={{
-                      backgroundColor: scanColor,
-                      animation: 'pulse-dot 2s ease-in-out infinite'
-                    }}
-                  />
-                  <span className="text-xs font-mono uppercase tracking-widest" style={{ color: scanColor }}>
-                    {analyzing ? 'Analizando' : 'Sistema activo'}
-                  </span>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#00C896' }}>
+                  <Shield className="w-6 h-6 text-white" />
                 </div>
-                <h1 className="text-2xl md:text-[28px] font-bold tracking-tight text-white leading-tight">
-                  AMA-LLU-IA
-                </h1>
-                <p className="text-sm mt-1 font-mono" style={{ color: '#7A8290' }}>
-                  Viralidad vs Veracidad
-                </p>
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900">AMA-LLU-IA</h1>
+                  <p className="text-xs text-gray-600">Verificador de contenido electoral</p>
+                </div>
               </div>
-
-              {/* Navigation */}
-              <nav className="hidden md:flex gap-2">
-                <button
-                  onClick={() => setActiveView('home')}
-                  className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
-                  style={{
-                    backgroundColor: activeView === 'home' ? 'rgba(0, 200, 150, 0.1)' : 'transparent',
-                    color: activeView === 'home' ? '#00C896' : '#7A8290',
-                    border: activeView === 'home' ? '1px solid #00C896' : '1px solid transparent'
-                  }}
-                >
-                  <Home className="inline-block w-4 h-4 mr-1.5 -mt-0.5" />
-                  Inicio
-                </button>
-                <button
-                  onClick={() => setActiveView('verificar')}
-                  className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
-                  style={{
-                    backgroundColor: activeView === 'verificar' ? 'rgba(0, 200, 150, 0.1)' : 'transparent',
-                    color: activeView === 'verificar' ? '#00C896' : '#7A8290',
-                    border: activeView === 'verificar' ? '1px solid #00C896' : '1px solid transparent'
-                  }}
-                >
-                  <Search className="inline-block w-4 h-4 mr-1.5 -mt-0.5" />
-                  Verificar
-                </button>
-              </nav>
+              <div className="flex items-center gap-2">
+                <span className="text-xs px-3 py-1.5 rounded-full font-medium" style={{ backgroundColor: '#00C89620', color: '#00C896' }}>
+                  v1.0
+                </span>
+              </div>
             </div>
           </div>
         </header>
+
+        {/* ===== TABS ===== */}
+        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                activeTab === tab.id
+                  ? 'text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+              style={{
+                backgroundColor: activeTab === tab.id ? '#00C896' : 'transparent',
+                border: activeTab === tab.id ? 'none' : '1px solid #E9ECEF'
+              }}
+            >
+              <tab.icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
         {/* ===== HOME VIEW ===== */}
         {activeView === 'home' && (
@@ -218,8 +178,8 @@ function App() {
             <div
               className="rounded-xl border p-6 md:p-8"
               style={{
-                backgroundColor: '#12161F',
-                borderColor: '#1E2433'
+                backgroundColor: '#F8F9FA',
+                borderColor: '#E9ECEF'
               }}
             >
               <div className="flex items-start gap-4">
@@ -230,8 +190,8 @@ function App() {
                   <Shield className="w-6 h-6" style={{ color: '#00C896' }} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white mb-2">Bienvenido a AMA-LLU-IA</h2>
-                  <p className="text-sm leading-relaxed" style={{ color: '#7A8290' }}>
+                  <h2 className="text-xl font-bold text-gray-900 mb-2">Bienvenido a AMA-LLU-IA</h2>
+                  <p className="text-sm leading-relaxed text-gray-600">
                     Plataforma de verificación de contenido electoral que te ayuda a distinguir entre información verificada y desinformación. 
                     Analiza noticias, videos y audios para detectar patrones de manipulación y campañas de bots.
                   </p>
@@ -255,16 +215,16 @@ function App() {
               <div
                 className="rounded-xl border p-6"
                 style={{
-                  backgroundColor: '#12161F',
-                  borderColor: '#1E2433'
+                  backgroundColor: '#F8F9FA',
+                  borderColor: '#E9ECEF'
                 }}
               >
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-base font-semibold text-white">Análisis Integral</h3>
-                    <span className="text-xs font-mono" style={{ color: '#7A8290' }}>N = 1,247</span>
+                    <h3 className="text-base font-semibold text-gray-900">Análisis Integral</h3>
+                    <span className="text-xs font-mono text-gray-600">N = 1,247</span>
                   </div>
-                  <p className="text-xs leading-relaxed" style={{ color: '#7A8290' }}>
+                  <p className="text-xs leading-relaxed text-gray-600">
                     Distribución de noticias analizadas según su nivel de veracidad
                   </p>
                 </div>
@@ -327,16 +287,16 @@ function App() {
               <div
                 className="rounded-xl border p-6"
                 style={{
-                  backgroundColor: '#12161F',
-                  borderColor: '#1E2433'
+                  backgroundColor: '#F8F9FA',
+                  borderColor: '#E9ECEF'
                 }}
               >
                 <div className="mb-4">
                   <div className="flex items-center gap-2 mb-2">
                     <TrendingUp className="w-5 h-5" style={{ color: '#00C896' }} />
-                    <h3 className="text-base font-semibold text-white">Ranking de Noticias</h3>
+                    <h3 className="text-base font-semibold text-gray-900">Ranking de Noticias</h3>
                   </div>
-                  <p className="text-xs leading-relaxed" style={{ color: '#7A8290' }}>
+                  <p className="text-xs leading-relaxed text-gray-600">
                     Noticias más virales ordenadas por número de visualizaciones y estado de verificación
                   </p>
                 </div>
@@ -349,8 +309,8 @@ function App() {
                         key={index}
                         className="rounded-lg p-3 transition-all hover:bg-opacity-80"
                         style={{
-                          backgroundColor: '#0B0E14',
-                          border: '1px solid #1E2433'
+                          backgroundColor: '#FFFFFF',
+                          border: '1px solid #E9ECEF'
                         }}
                       >
                         <div className="flex items-start gap-2">
@@ -364,7 +324,7 @@ function App() {
                             {index + 1}
                           </span>
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs leading-relaxed truncate" style={{ color: '#E8ECF1' }}>
+                            <p className="text-xs leading-relaxed truncate text-gray-900">
                               {noticia.titulo}
                             </p>
                             <div className="flex items-center gap-3 mt-1">
@@ -374,8 +334,8 @@ function App() {
                                   {noticia.status}
                                 </span>
                               </div>
-                              <span className="text-xs font-mono" style={{ color: '#7A8290' }}>
-                                {noticia.viralidad.toLocaleString()} vistas
+                              <span className="text-xs font-mono text-gray-600">
+                                {noticia.vistas.toLocaleString()} vistas
                               </span>
                             </div>
                           </div>
@@ -409,15 +369,15 @@ function App() {
                 <div
                   className="rounded-lg p-4"
                   style={{
-                    backgroundColor: '#0B0E14',
-                    border: '1px solid #1E2433'
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E9ECEF'
                   }}
                 >
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-3" style={{ backgroundColor: 'rgba(232, 163, 61, 0.1)' }}>
                     <AlertTriangle className="w-4 h-4" style={{ color: '#E8A33D' }} />
                   </div>
-                  <h4 className="text-sm font-semibold text-white mb-2">Información falsa</h4>
-                  <p className="text-xs leading-relaxed" style={{ color: '#7A8290' }}>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Información falsa</h4>
+                  <p className="text-xs leading-relaxed text-gray-600">
                     Contenido creado deliberadamente para engañar o manipular la opinión pública.
                   </p>
                 </div>
@@ -425,15 +385,15 @@ function App() {
                 <div
                   className="rounded-lg p-4"
                   style={{
-                    backgroundColor: '#0B0E14',
-                    border: '1px solid #1E2433'
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E9ECEF'
                   }}
                 >
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-3" style={{ backgroundColor: 'rgba(232, 93, 93, 0.1)' }}>
                     <XCircle className="w-4 h-4" style={{ color: '#E85D5D' }} />
                   </div>
-                  <h4 className="text-sm font-semibold text-white mb-2">Campañas de bots</h4>
-                  <p className="text-xs leading-relaxed" style={{ color: '#7A8290' }}>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Campañas de bots</h4>
+                  <p className="text-xs leading-relaxed text-gray-600">
                     Propagación artificial de contenido mediante cuentas automatizadas.
                   </p>
                 </div>
@@ -441,16 +401,16 @@ function App() {
                 <div
                   className="rounded-lg p-4"
                   style={{
-                    backgroundColor: '#0B0E14',
-                    border: '1px solid #1E2433'
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E9ECEF'
                   }}
                 >
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-3" style={{ backgroundColor: 'rgba(0, 200, 150, 0.1)' }}>
                     <CheckCircle2 className="w-4 h-4" style={{ color: '#00C896' }} />
                   </div>
-                  <h4 className="text-sm font-semibold text-white mb-2">Verificación</h4>
-                  <p className="text-xs leading-relaxed" style={{ color: '#7A8290' }}>
-                    Proceso de corroboración con fuentes oficiales y medios confiables.
+                  <h4 className="text-sm font-semibold text-gray-600 mb-2">Verificación</h4>
+                  <p className="text-xs leading-relaxed text-gray-600">
+                    Proceso de contrastar información con fuentes oficiales y verificadores independientes.
                   </p>
                 </div>
               </div>
@@ -463,12 +423,12 @@ function App() {
           <main
             className="rounded-xl border overflow-hidden"
             style={{
-              backgroundColor: '#12161F',
-              borderColor: '#1E2433'
+              backgroundColor: '#F8F9FA',
+              borderColor: '#E9ECEF'
             }}
           >
             {/* Tabs */}
-            <nav className="flex" style={{ borderBottom: '1px solid #1E2433' }}>
+            <nav className="flex" style={{ borderBottom: '1px solid #E9ECEF' }}>
               {tabs.map(tab => {
                 const Icon = tab.icon
                 const isActive = activeTab === tab.id
@@ -478,12 +438,12 @@ function App() {
                     onClick={() => setActiveTab(tab.id)}
                     className="flex-1 px-3 py-3.5 text-xs md:text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-inset"
                     style={{
-                      color: isActive ? '#00C896' : '#7A8290',
+                      color: isActive ? '#00C896' : '#6B7280',
                       borderBottom: isActive ? '2px solid #00C896' : '2px solid transparent',
                       backgroundColor: isActive ? 'rgba(0, 200, 150, 0.04)' : 'transparent'
                     }}
                     onFocus={e => e.target.style.color = '#00C896'}
-                    onBlur={e => e.target.style.color = isActive ? '#00C896' : '#7A8290'}
+                    onBlur={e => e.target.style.color = isActive ? '#00C896' : '#6B7280'}
                   >
                     <Icon className="inline-block w-4 h-4 mr-1.5 -mt-0.5" />
                     {tab.label}
@@ -500,10 +460,10 @@ function App() {
                   <div>
                     <label className="block mb-2">
                       <div className="mb-3">
-                        <span className="text-xs font-mono uppercase tracking-wider block mb-1" style={{ color: '#7A8290' }}>
+                        <span className="text-xs font-mono uppercase tracking-wider block mb-1 text-gray-600">
                           URL de la noticia
                         </span>
-                        <p className="text-xs" style={{ color: '#7A8290' }}>
+                        <p className="text-xs text-gray-600">
                           Pega el enlace de la noticia que deseas verificar
                         </p>
                       </div>
@@ -515,14 +475,14 @@ function App() {
                           placeholder="https://ejemplo.com/noticia-electoral"
                           className="w-full px-4 py-3 pl-11 rounded-lg text-sm transition-all focus:outline-none font-mono"
                           style={{
-                            backgroundColor: '#0B0E14',
-                            border: '1px solid #1E2433',
-                            color: '#E8ECF1'
+                            backgroundColor: '#FFFFFF',
+                            border: '1px solid #E9ECEF',
+                            color: '#111827'
                           }}
                           onFocus={e => e.target.style.borderColor = '#00C896'}
-                          onBlur={e => e.target.style.borderColor = '#1E2433'}
+                          onBlur={e => e.target.style.borderColor = '#E9ECEF'}
                         />
-                        <LinkIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#7A8290' }} />
+                        <LinkIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                       </div>
                     </label>
                   </div>
@@ -531,10 +491,10 @@ function App() {
                     disabled={analyzing}
                     className="w-full px-6 py-3 rounded-lg font-semibold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     style={{
-                      backgroundColor: analyzing ? '#1E2433' : '#00C896',
-                      color: analyzing ? '#7A8290' : '#0B0E14',
+                      backgroundColor: analyzing ? '#E9ECEF' : '#00C896',
+                      color: analyzing ? '#6B7280' : '#0B0E14',
                       '--tw-ring-color': '#00C896',
-                      '--tw-ring-offset-color': '#12161F'
+                      '--tw-ring-offset-color': '#FFFFFF'
                     }}
                   >
                     {analyzing ? (
@@ -667,8 +627,8 @@ function App() {
                     return (
                     <div className="mt-6 space-y-4">
                       {/* ===== VIDEO PLAYER + FUENTE ORIGINAL ===== */}
-                      <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: '#12161F', borderColor: '#1E2433' }}>
-                        {/* Video player */}
+                      <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E9ECEF' }}>
+                        {/* Video player - full-width */}
                         {ytId ? (
                           <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
                             <iframe
@@ -681,53 +641,48 @@ function App() {
                             />
                           </div>
                         ) : (
-                          <div className="w-full flex items-center justify-center" style={{ backgroundColor: '#0B0E14', height: '200px' }}>
+                          <div className="w-full flex items-center justify-center" style={{ backgroundColor: '#F8F9FA', height: '400px' }}>
                             <div className="text-center">
-                              <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-2" style={{ backgroundColor: pc.bg }}>
-                                <span className="text-2xl">{pc.icon}</span>
+                              <div className="w-20 h-20 rounded-xl mx-auto flex items-center justify-center mb-3" style={{ backgroundColor: pc.bg }}>
+                                <span className="text-3xl">{pc.icon}</span>
                               </div>
-                              <p className="text-xs" style={{ color: '#7A8290' }}>Video analizado</p>
+                              <p className="text-sm text-gray-600">Video analizado</p>
                             </div>
                           </div>
                         )}
 
                         {/* Source info */}
                         {sm && (
-                          <div className="p-4">
-                            <div className="flex items-start gap-3">
+                          <div className="p-5">
+                            <div className="flex items-center gap-2 mb-3">
                               <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: pc.bg }}>
                                 <span className="text-white font-bold text-sm">{pc.icon}</span>
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-white">{sm.title}</p>
-                                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                  <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ backgroundColor: pc.bg + '20', color: pc.color }}>
-                                    {pc.label}
-                                  </span>
-                                  <span className="text-xs" style={{ color: '#7A8290' }}>·</span>
-                                  <span className="text-xs font-medium text-white">{sm.channel}</span>
-                                  {sm.is_verified ? (
-                                    <span className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#00C89620', color: '#00C896' }}>
-                                      <CheckCircle2 className="w-3 h-3" /> Verificado
-                                    </span>
-                                  ) : (
-                                    <span className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#E8A33D20', color: '#E8A33D' }}>
-                                      <AlertTriangle className="w-3 h-3" /> No verificado
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-3 mt-2 text-xs" style={{ color: '#7A8290' }}>
-                                  {sm.view_count > 0 && <span>{sm.view_count.toLocaleString()} vistas</span>}
-                                  {sm.upload_date && <span>{sm.upload_date}</span>}
-                                  {sm.duration > 0 && <span>{Math.floor(sm.duration / 60)}:{String(sm.duration % 60).padStart(2, '0')}</span>}
-                                </div>
-                              </div>
+                              <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ backgroundColor: pc.bg + '20', color: pc.color }}>
+                                {pc.label}
+                              </span>
+                              {sm.is_verified ? (
+                                <span className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#00C89620', color: '#00C896' }}>
+                                  <CheckCircle2 className="w-3 h-3" /> Verificado
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#E8A33D20', color: '#E8A33D' }}>
+                                  <AlertTriangle className="w-3 h-3" /> No verificado
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm font-semibold text-gray-900 mb-2">{sm.title}</p>
+                            <div className="flex items-center gap-3 text-xs flex-wrap text-gray-600">
+                              <span className="font-medium text-gray-900">{sm.channel}</span>
+                              {sm.view_count > 0 && <span>· {sm.view_count.toLocaleString()} vistas</span>}
+                              {sm.upload_date && <span>· {sm.upload_date}</span>}
+                              {sm.duration > 0 && <span>· {Math.floor(sm.duration / 60)}:{String(sm.duration % 60).padStart(2, '0')}</span>}
                             </div>
                             {!sm.is_verified && (
-                              <div className="mt-3 rounded-lg p-3 flex items-start gap-2" style={{ backgroundColor: '#E8A33D10' }}>
-                                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#E8A33D' }} />
+                              <div className="mt-3 rounded-lg p-2.5 flex items-start gap-2" style={{ backgroundColor: '#E8A33D10' }}>
+                                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: '#E8A33D' }} />
                                 <p className="text-xs" style={{ color: '#E8A33D' }}>
-                                  <strong>Alerta:</strong> Este canal no está verificado oficialmente. Verifica la autenticidad antes de compartir.
+                                  Canal no verificado oficialmente. Verifica antes de compartir.
                                 </p>
                               </div>
                             )}
@@ -737,7 +692,7 @@ function App() {
 
                       {/* ===== BANNER DE VEREDICTO ===== */}
                       <div className="rounded-xl border-2 p-4" style={{
-                        backgroundColor: analysisResult.is_ai_generated ? '#1E1416' : '#0E1A14',
+                        backgroundColor: analysisResult.is_ai_generated ? '#FEF2F2' : '#F0FDF4',
                         borderColor: analysisResult.is_ai_generated ? '#E85D5D' : '#00C896'
                       }}>
                         <div className="flex items-center justify-between">
@@ -748,10 +703,10 @@ function App() {
                               <CheckCircle2 className="w-7 h-7" style={{ color: '#00C896' }} />
                             )}
                             <div>
-                              <h4 className="text-base font-bold text-white">
+                              <h4 className="text-base font-bold text-gray-900">
                                 {analysisResult.is_ai_generated ? 'Contenido Sospechoso' : 'Contenido Auténtico'}
                               </h4>
-                              <p className="text-xs" style={{ color: '#7A8290' }}>
+                              <p className="text-xs text-gray-600">
                                 Procesado en {analysisResult.processing_time?.toFixed(1) || 'N/A'}s
                               </p>
                             </div>
@@ -760,10 +715,10 @@ function App() {
                             <div className="text-2xl font-bold font-mono" style={{ color: analysisResult.is_ai_generated ? '#E85D5D' : '#00C896' }}>
                               {(analysisResult.confidence * 100).toFixed(0)}%
                             </div>
-                            <div className="text-xs" style={{ color: '#7A8290' }}>Fiabilidad</div>
+                            <div className="text-xs text-gray-600">Fiabilidad</div>
                           </div>
                         </div>
-                        <div className="mt-2 h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#0B0E14' }}>
+                        <div className="mt-2 h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#E9ECEF' }}>
                           <div className="h-full rounded-full transition-all duration-1000" style={{
                             width: `${analysisResult.confidence * 100}%`,
                             backgroundColor: analysisResult.is_ai_generated ? '#E85D5D' : '#00C896'
@@ -773,17 +728,17 @@ function App() {
 
                       {/* ===== RESUMEN DEL DISCURSO ===== */}
                       {totalSegs > 0 && (
-                        <div className="rounded-xl border p-5" style={{ backgroundColor: '#12161F', borderColor: '#1E2433' }}>
+                        <div className="rounded-xl border p-5" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
                           <div className="flex items-center gap-2 mb-4">
                             <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#00C896' }} />
-                            <h4 className="text-sm font-bold text-white tracking-wide">RESUMEN DEL DISCURSO</h4>
+                            <h4 className="text-sm font-bold text-gray-900 tracking-wide">RESUMEN DEL DISCURSO</h4>
                           </div>
 
                           {/* Stats grid */}
                           <div className="grid grid-cols-4 gap-3 mb-4">
-                            <div className="rounded-lg p-3 text-center" style={{ backgroundColor: '#0B0E14' }}>
-                              <div className="text-xl font-bold font-mono text-white">{totalSegs}</div>
-                              <div className="text-xs mt-1" style={{ color: '#7A8290' }}>Afirmaciones</div>
+                            <div className="rounded-lg p-3 text-center" style={{ backgroundColor: '#FFFFFF' }}>
+                              <div className="text-xl font-bold font-mono text-gray-900">{totalSegs}</div>
+                              <div className="text-xs mt-1 text-gray-600">Afirmaciones</div>
                             </div>
                             <div className="rounded-lg p-3 text-center" style={{ backgroundColor: '#00C89610' }}>
                               <div className="text-xl font-bold font-mono" style={{ color: '#00C896' }}>{verified}</div>
@@ -800,26 +755,26 @@ function App() {
                           </div>
 
                           {/* Stacked bar */}
-                          <div className="h-3 rounded-full overflow-hidden flex" style={{ backgroundColor: '#0B0E14' }}>
+                          <div className="h-3 rounded-full overflow-hidden flex" style={{ backgroundColor: '#E9ECEF' }}>
                             {verified > 0 && <div style={{ width: `${(verified / totalSegs) * 100}%`, backgroundColor: '#00C896' }} />}
                             {imprecise > 0 && <div style={{ width: `${(imprecise / totalSegs) * 100}%`, backgroundColor: '#E8A33D' }} />}
                             {falseCount > 0 && <div style={{ width: `${(falseCount / totalSegs) * 100}%`, backgroundColor: '#E85D5D' }} />}
-                            {unverified > 0 && <div style={{ width: `${(unverified / totalSegs) * 100}%`, backgroundColor: '#7A8290' }} />}
+                            {unverified > 0 && <div style={{ width: `${(unverified / totalSegs) * 100}%`, backgroundColor: '#9CA3AF' }} />}
                           </div>
 
                           {/* Legend */}
                           <div className="flex items-center gap-4 mt-3 flex-wrap">
-                            <span className="flex items-center gap-1.5 text-xs" style={{ color: '#7A8290' }}>
+                            <span className="flex items-center gap-1.5 text-xs text-gray-600">
                               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#00C896' }} /> Verificadas
                             </span>
-                            <span className="flex items-center gap-1.5 text-xs" style={{ color: '#7A8290' }}>
+                            <span className="flex items-center gap-1.5 text-xs text-gray-600">
                               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#E8A33D' }} /> Imprecisas
                             </span>
-                            <span className="flex items-center gap-1.5 text-xs" style={{ color: '#7A8290' }}>
+                            <span className="flex items-center gap-1.5 text-xs text-gray-600">
                               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#E85D5D' }} /> Falsas
                             </span>
-                            <span className="flex items-center gap-1.5 text-xs" style={{ color: '#7A8290' }}>
-                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#7A8290' }} /> Sin verificar
+                            <span className="flex items-center gap-1.5 text-xs text-gray-600">
+                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#9CA3AF' }} /> Sin verificar
                             </span>
                           </div>
                         </div>
@@ -827,10 +782,10 @@ function App() {
 
                       {/* ===== TRANSCRIPCIÓN + VERIFICACIÓN ===== */}
                       {analysisResult.content_analysis?.has_transcription && analysisResult.content_analysis?.transcription?.text && (
-                        <div className="rounded-xl border p-5" style={{ backgroundColor: '#12161F', borderColor: '#1E2433' }}>
+                        <div className="rounded-xl border p-5" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
                           <div className="flex items-center gap-2 mb-4">
                             <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#00C896' }} />
-                            <h4 className="text-sm font-bold text-white tracking-wide">TRANSCRIPCIÓN + VERIFICACIÓN</h4>
+                            <h4 className="text-sm font-bold text-gray-900 tracking-wide">TRANSCRIPCIÓN + VERIFICACIÓN</h4>
                           </div>
                           <div className="space-y-3">
                             {segVs.length > 0 ? segVs.slice(0, 6).map((seg, idx) => {
@@ -847,16 +802,16 @@ function App() {
                               }
                               const color = labelColors[seg.label] || '#7A8290'
                               return (
-                                <div key={idx} className="flex gap-3 pb-3" style={{ borderBottom: idx < 5 ? '1px solid #1E2433' : 'none' }}>
+                                <div key={idx} className="flex gap-3 pb-3" style={{ borderBottom: idx < 5 ? '1px solid #E9ECEF' : 'none' }}>
                                   <span className="text-xs font-mono font-bold flex-shrink-0 pt-0.5" style={{ color: '#00C896' }}>{timestamp}</span>
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm leading-relaxed mb-1.5" style={{ color: '#E8ECF1' }}>"{seg.text}"</p>
+                                    <p className="text-sm leading-relaxed mb-1.5 text-gray-900">"{seg.text}"</p>
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <span className="text-xs px-2 py-0.5 rounded font-bold" style={{
                                         backgroundColor: color + '20', color: color, border: `1px solid ${color}40`
                                       }}>{seg.label}</span>
-                                      {seg.source !== 'N/A' && <span className="text-xs" style={{ color: '#7A8290' }}>↔ {seg.source}</span>}
-                                      {seg.fact_checks_found > 0 && <span className="text-xs" style={{ color: '#7A8290' }}>({seg.fact_checks_found} verif.)</span>}
+                                      {seg.source !== 'N/A' && <span className="text-xs text-gray-600">↔ {seg.source}</span>}
+                                      {seg.fact_checks_found > 0 && <span className="text-xs text-gray-600">({seg.fact_checks_found} verif.)</span>}
                                     </div>
                                   </div>
                                 </div>
@@ -866,18 +821,18 @@ function App() {
                               const seconds = Math.floor(segment.start % 60)
                               const timestamp = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
                               return (
-                                <div key={idx} className="flex gap-3 pb-3" style={{ borderBottom: idx < 5 ? '1px solid #1E2433' : 'none' }}>
+                                <div key={idx} className="flex gap-3 pb-3" style={{ borderBottom: idx < 5 ? '1px solid #E9ECEF' : 'none' }}>
                                   <span className="text-xs font-mono font-bold flex-shrink-0 pt-0.5" style={{ color: '#00C896' }}>{timestamp}</span>
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm leading-relaxed" style={{ color: '#E8ECF1' }}>"{segment.text?.trim()}"</p>
-                                    <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ backgroundColor: '#7A829020', color: '#7A8290', border: '1px solid #7A829040' }}>SIN_VERIFICAR</span>
+                                    <p className="text-sm leading-relaxed text-gray-900">"{segment.text?.trim()}"</p>
+                                    <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ backgroundColor: '#9CA3AF20', color: '#6B7280', border: '1px solid #9CA3AF40' }}>SIN_VERIFICAR</span>
                                   </div>
                                 </div>
                               )
                             }) || (
                               <div className="flex gap-3 pb-3">
                                 <span className="text-xs font-mono font-bold flex-shrink-0" style={{ color: '#00C896' }}>00:00</span>
-                                <p className="text-sm leading-relaxed" style={{ color: '#E8ECF1' }}>{analysisResult.content_analysis.transcription.text}</p>
+                                <p className="text-sm leading-relaxed text-gray-900">{analysisResult.content_analysis.transcription.text}</p>
                               </div>
                             )}
                           </div>
@@ -886,10 +841,10 @@ function App() {
 
                       {/* ===== VERIFICACIONES RELACIONADAS ===== */}
                       {fcCount > 0 && (
-                        <div className="rounded-xl border p-5" style={{ backgroundColor: '#12161F', borderColor: '#1E2433' }}>
+                        <div className="rounded-xl border p-5" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
                           <div className="flex items-center gap-2 mb-4">
                             <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#3B82F6' }} />
-                            <h4 className="text-sm font-bold text-white tracking-wide">VERIFICACIONES RELACIONADAS</h4>
+                            <h4 className="text-sm font-bold text-gray-900 tracking-wide">VERIFICACIONES RELACIONADAS</h4>
                             <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: '#3B82F620', color: '#3B82F6' }}>{fcCount} encontradas</span>
                           </div>
                           <div className="space-y-3">
@@ -899,10 +854,10 @@ function App() {
                               const isTrue = ratingLower.includes('true') || ratingLower.includes('verdadero')
                               const ratingColor = isFalse ? '#E85D5D' : isTrue ? '#00C896' : '#E8A33D'
                               return (
-                                <div key={idx} className="rounded-lg p-3" style={{ backgroundColor: '#0B0E14' }}>
-                                  <p className="text-sm font-medium mb-2" style={{ color: '#E8ECF1' }}>{fc.title}</p>
+                                <div key={idx} className="rounded-lg p-3" style={{ backgroundColor: '#FFFFFF' }}>
+                                  <p className="text-sm font-medium mb-2 text-gray-900">{fc.title}</p>
                                   <div className="flex items-center gap-3 flex-wrap">
-                                    <span className="text-xs" style={{ color: '#7A8290' }}>📰 {fc.publisher}</span>
+                                    <span className="text-xs text-gray-600">📰 {fc.publisher}</span>
                                     <span className="text-xs px-2 py-0.5 rounded font-semibold" style={{ backgroundColor: ratingColor + '20', color: ratingColor }}>
                                       {fc.rating}
                                     </span>
@@ -915,23 +870,23 @@ function App() {
                       )}
 
                       {/* ===== INFO TÉCNICA ===== */}
-                      <div className="rounded-xl border p-4" style={{ backgroundColor: '#12161F', borderColor: '#1E2433' }}>
+                      <div className="rounded-xl border p-4" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
                         <div className="flex items-center gap-2 mb-3">
-                          <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#7A8290' }} />
-                          <h4 className="text-xs font-bold text-white tracking-wide">INFO TÉCNICA</h4>
+                          <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#9CA3AF' }} />
+                          <h4 className="text-xs font-bold text-gray-900 tracking-wide">INFO TÉCNICA</h4>
                         </div>
                         <div className="grid grid-cols-3 gap-3 text-xs">
-                          <div className="rounded-lg p-2.5" style={{ backgroundColor: '#0B0E14' }}>
-                            <p style={{ color: '#7A8290' }}>Formato</p>
-                            <p className="font-mono font-bold text-white mt-1">{analysisResult.metadata?.format || 'N/A'}</p>
+                          <div className="rounded-lg p-2.5" style={{ backgroundColor: '#FFFFFF' }}>
+                            <p className="text-gray-600">Formato</p>
+                            <p className="font-mono font-bold text-gray-900 mt-1">{analysisResult.metadata?.format || 'N/A'}</p>
                           </div>
-                          <div className="rounded-lg p-2.5" style={{ backgroundColor: '#0B0E14' }}>
-                            <p style={{ color: '#7A8290' }}>Duración</p>
-                            <p className="font-mono font-bold text-white mt-1">{analysisResult.metadata?.duration ? `${analysisResult.metadata.duration.toFixed(1)}s` : 'N/A'}</p>
+                          <div className="rounded-lg p-2.5" style={{ backgroundColor: '#FFFFFF' }}>
+                            <p className="text-gray-600">Duración</p>
+                            <p className="font-mono font-bold text-gray-900 mt-1">{analysisResult.metadata?.duration ? `${analysisResult.metadata.duration.toFixed(1)}s` : 'N/A'}</p>
                           </div>
-                          <div className="rounded-lg p-2.5" style={{ backgroundColor: '#0B0E14' }}>
-                            <p style={{ color: '#7A8290' }}>Procesado</p>
-                            <p className="font-mono font-bold text-white mt-1">{analysisResult.processing_time?.toFixed(2) || 'N/A'}s</p>
+                          <div className="rounded-lg p-2.5" style={{ backgroundColor: '#FFFFFF' }}>
+                            <p className="text-gray-600">Procesado</p>
+                            <p className="font-mono font-bold text-gray-900 mt-1">{analysisResult.processing_time?.toFixed(2) || 'N/A'}s</p>
                           </div>
                         </div>
                       </div>
@@ -941,7 +896,7 @@ function App() {
 
                   {/* Error */}
                   {error && (
-                    <div className="mt-4 rounded-lg border p-4" style={{ backgroundColor: '#1E1416', borderColor: '#E85D5D' }}>
+                    <div className="mt-4 rounded-lg border p-4" style={{ backgroundColor: '#FEF2F2', borderColor: '#E85D5D' }}>
                       <div className="flex items-start gap-2">
                         <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#E85D5D' }} />
                         <p className="text-xs" style={{ color: '#E85D5D' }}>{error}</p>

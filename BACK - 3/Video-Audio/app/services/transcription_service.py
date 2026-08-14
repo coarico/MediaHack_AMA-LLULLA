@@ -35,6 +35,22 @@ class TranscriptionService:
         """
         self._load_model()
         
+        # Ensure ffmpeg is available for Whisper (it looks for 'ffmpeg' in PATH)
+        import imageio_ffmpeg
+        import shutil
+        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+        ffmpeg_dir = os.path.dirname(ffmpeg_exe)
+        # Whisper looks for 'ffmpeg' executable name, but imageio-ffmpeg uses a different name
+        # Copy/symlink it as 'ffmpeg.exe' in the same directory
+        ffmpeg_renamed = os.path.join(ffmpeg_dir, 'ffmpeg.exe')
+        if not os.path.exists(ffmpeg_renamed):
+            try:
+                shutil.copy2(ffmpeg_exe, ffmpeg_renamed)
+            except Exception:
+                pass
+        if ffmpeg_dir not in os.environ.get('PATH', ''):
+            os.environ['PATH'] = ffmpeg_dir + os.pathsep + os.environ.get('PATH', '')
+        
         if not os.path.exists(audio_path):
             raise FileNotFoundError(f"Audio file not found: {audio_path}")
         
@@ -70,8 +86,6 @@ class TranscriptionService:
         Returns:
             Dict with transcription results
         """
-        import ffmpeg
-        
         # Convert Path to string if needed
         video_path_str = str(video_path)
         
@@ -79,18 +93,30 @@ class TranscriptionService:
         audio_path = video_path_str.replace(os.path.splitext(video_path_str)[1], '_audio.wav')
         
         try:
-            # Use imageio-ffmpeg binary directly (more reliable than ffmpeg-python)
+            # Use imageio-ffmpeg binary directly
             import imageio_ffmpeg
             import subprocess
             ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
-            result = subprocess.run([
-                ffmpeg_exe, '-i', video_path_str, '-vn',
-                '-acodec', 'pcm_s16le', '-ac', '1', '-ar', '16000',
-                '-y', audio_path
-            ], capture_output=True, text=True)
+            print(f"🎬 Extracting audio with: {ffmpeg_exe}")
+            print(f"   Input: {video_path_str}")
+            print(f"   Output: {audio_path}")
             
+            result = subprocess.run(
+                [ffmpeg_exe, '-i', video_path_str, '-vn',
+                 '-acodec', 'pcm_s16le', '-ac', '1', '-ar', '16000',
+                 '-y', audio_path],
+                capture_output=True, text=True
+            )
+            
+            print(f"   ffmpeg return code: {result.returncode}")
             if result.returncode != 0:
+                print(f"   ffmpeg stderr: {result.stderr[:300]}")
                 raise Exception(f"ffmpeg failed: {result.stderr[:200]}")
+            
+            if not os.path.exists(audio_path):
+                raise Exception(f"Audio file not created: {audio_path}")
+            
+            print(f"   Audio file size: {os.path.getsize(audio_path)} bytes")
             
             # Transcribe extracted audio
             result = await self.transcribe(audio_path)
