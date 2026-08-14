@@ -1,10 +1,4 @@
-"""Fixtures compartidas para tests del modulo de video.
-
-Como main.py (compartido con el companero) todavia no existe, estas fixtures
-arman una app FastAPI minima que monta solo el router de video, para poder
-testear el endpoint de forma aislada. Cuando main.py exista, el router se
-monta ahi con app.include_router(video_router).
-"""
+"""Fixtures compartidas para tests del modulo de video."""
 from __future__ import annotations
 
 import os
@@ -14,22 +8,17 @@ os.environ.setdefault("VIDEO_ML_MOCK", "1")
 import cv2
 import numpy as np
 import pytest
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.api.video import router as video_router
+from app.main import app
 
 
 @pytest.fixture()
-def app() -> FastAPI:
-    application = FastAPI()
-    application.include_router(video_router)
-    return application
-
-
-@pytest.fixture()
-def client(app: FastAPI) -> TestClient:
-    return TestClient(app)
+def client():
+    # Usar como context manager dispara los eventos de startup/shutdown
+    # (crea temp/ y uploads/), igual que en un servidor real.
+    with TestClient(app) as test_client:
+        yield test_client
 
 
 @pytest.fixture()

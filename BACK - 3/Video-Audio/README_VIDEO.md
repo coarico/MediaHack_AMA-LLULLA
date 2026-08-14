@@ -1,69 +1,59 @@
 # Modulo de Video (Programador 2)
 
-Detecta si un video fue generado/manipulado por IA combinando:
+Ya integrado en `app/main.py`. Detecta si un video fue generado/manipulado
+por IA combinando:
 
 - **ML**: clasificador de imagenes real-vs-fake (`app/ml/`), corrido por frame
   sobre el video y agregado a un score de video.
 - **Heuristicas OpenCV** (`app/services/video_analyzer.py`): jitter de la cara
-  detectada entre frames, varianza de nitidez (artefactos de compresion) y
-  parpadeo/flicker de histograma de color entre frames consecutivos.
+  detectada entre frames (YuNet), varianza de nitidez (artefactos de
+  compresion) y parpadeo/flicker de histograma de color entre frames
+  consecutivos.
 
-Score final = `0.65 * ml_score + 0.35 * heuristic_score` (ver constantes
-`ML_WEIGHT` / `HEURISTIC_WEIGHT` en `video_analyzer.py`).
+Score final = `0.65 * ml_score + 0.35 * promedio(heuristicas)` (constantes
+`ML_WEIGHT` / `HEURISTIC_WEIGHT` en `video_analyzer.py`). Sigue exactamente el
+mismo contrato que `AudioAnalyzer`: una clase `VideoAnalyzer` con
+`async def analyze(file_path) -> AnalysisResponse`, usando los schemas
+compartidos de `app/models/schemas.py` (`AnalysisResponse`,
+`VideoAnalysisDetails`, `MediaMetadata`, `ArtifactDetection`).
 
-## Que existe hoy
+## Archivos de este modulo
 
 ```
 app/
   ml/
-    model_loader.py   # carga el modelo HF (lazy) + modo mock para tests
-    inference.py       # clasifica frames y agrega scores
+    model_loader.py    # carga el modelo HF (lazy) + modo mock para tests
+    inference.py        # clasifica frames y agrega scores
   services/
-    video_analyzer.py  # extraccion de frames, heuristicas, orquestacion
-  models/
-    video_schemas.py   # Pydantic: request/response del endpoint de video
-  api/
-    video.py           # router FastAPI: POST /api/v1/analyze/video (async + job)
+    video_analyzer.py   # extraccion de frames, heuristicas, VideoAnalyzer
 models/
   face_detection_yunet_2023mar.onnx  # detector facial (OpenCV Zoo, MIT)
   README.md
 tests/
-  conftest.py           # app FastAPI minima + fixture de video sintetico
-  test_video.py          # unit tests de analyzer/ml
-  test_api.py             # integration tests del endpoint
-requirements-video.txt
+  conftest.py            # TestClient de app.main + fixture de video sintetico
+  test_video.py           # unit tests de analyzer/ml
+  test_api.py              # integration tests del endpoint /analyze/video
 ```
 
-**No toque** `app/models/schemas.py`, `app/config.py`, `main.py` ni
-`requirements.txt` porque son compartidos / responsabilidad del Programador 1
-(audio + setup base). `app/models/video_schemas.py` es un archivo separado
-para no pisar su `schemas.py`.
+## Endpoints (en `app/main.py`)
+
+- `POST /api/v1/analyze/video` (multipart, campo `file`) -> `AnalysisResponse`
+- `POST /api/v1/analyze/url` -> tambien detecta y analiza video si la URL
+  apunta a un archivo de video (extendido para soportar ambos tipos)
 
 ## Como correr
 
 ```bash
-pip install -r requirements-video.txt
+pip install -r requirements.txt
 VIDEO_ML_MOCK=1 pytest tests/ -v      # sin descargar pesos del clasificador
 ```
 
 Sin `VIDEO_ML_MOCK=1`, la primera llamada descarga el modelo de Hugging Face
 (`dima806/deepfake_vs_real_image_detection`, ver `models/README.md`).
 
-## Punto de integracion pendiente
+## Variables de entorno propias de este modulo
 
-Cuando exista `main.py` (Programador 1), montar el router asi:
-
-```python
-from app.api.video import router as video_router
-app.include_router(video_router)
-```
-
-El endpoint es asincrono con seguimiento de progreso:
-
-1. `POST /api/v1/analyze/video` (multipart, campo `file`) -> `202` con `job_id`
-2. `GET /api/v1/analyze/video/{job_id}` -> `status` (`queued|processing|done|failed`),
-   `progress` (0-100) y `result` cuando `status == "done"`
-
-Tambien falta fusionar `requirements-video.txt` dentro del `requirements.txt`
-compartido, y unificar `app/models/video_schemas.py` con `app/models/schemas.py`
-cuando ambos existan.
+- `VIDEO_ML_MODEL_ID` — modelo HF a usar (default: `dima806/deepfake_vs_real_image_detection`)
+- `VIDEO_ML_DEVICE` — `cpu` (default) o indice de GPU
+- `VIDEO_ML_MOCK` — `1` para predictor determinista sin descargar pesos (tests/CI)
+- `VIDEO_FACE_DETECTOR_PATH` — ruta al `.onnx` de YuNet (default: `models/face_detection_yunet_2023mar.onnx`)

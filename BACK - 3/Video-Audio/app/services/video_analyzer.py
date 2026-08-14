@@ -1,23 +1,35 @@
 """Analisis de video: extraccion de frames, heuristicas OpenCV e inferencia ML combinada.
 
+Sigue el mismo contrato que AudioAnalyzer (analyze_audio.py): una clase con un
+metodo async `analyze(file_path) -> AnalysisResponse`, usando los schemas
+compartidos en app.models.
+
 El score final combina dos senales independientes:
   - ml_score: probabilidad media de 'fake' segun el modelo de clasificacion (app.ml).
-  - heuristic_score: senales clasicas de vision por computador (jitter facial,
-    perdida de nitidez/artefactos de compresion, parpadeo/flicker de iluminacion).
+  - heuristicas OpenCV: jitter facial, perdida de nitidez/artefactos de compresion,
+    parpadeo/flicker de iluminacion entre frames.
 
-Combinar ambas hace el resultado mas robusto que depender solo del modelo de ML.
+En los tres campos heuristicos, igual que en AudioAnalysisDetails, el score
+representa "que tanto apunta esta senal a que el contenido es IA": mas alto =
+mas sospechoso (no "que tan consistente/limpio se ve").
 """
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Optional
+from typing import List, Optional
 
 import cv2
 import numpy as np
 
+from app.config import settings
 from app.ml.inference import classify_frames
+from app.models import (
+    AnalysisResponse,
+    ArtifactDetection,
+    MediaMetadata,
+    VideoAnalysisDetails,
+)
 
 # YuNet (DNN, OpenCV Zoo) reemplaza a los Haar Cascades clasicos: mas preciso
 # y sigue disponible en OpenCV 5.x, donde cv2.CascadeClassifier fue removido.
@@ -30,25 +42,11 @@ _face_detector: Optional[cv2.FaceDetectorYN] = None
 
 ML_WEIGHT = 0.65
 HEURISTIC_WEIGHT = 0.35
+MAX_FRAMES = 16
 
 JITTER_THRESHOLD = 0.18
 BLUR_VARIANCE_THRESHOLD = 60.0
 FLICKER_THRESHOLD = 35.0
-AI_GENERATED_THRESHOLD = 0.55
-
-
-@dataclass
-class VideoAnalysisResult:
-    is_ai_generated: bool
-    confidence: float
-    video_score: float
-    ml_score: float
-    heuristic_score: float
-    artifacts_detected: list[str]
-    frames_analyzed: int
-    duration_seconds: float
-    fps: float
-    format: str
 
 
 def _get_face_detector() -> cv2.FaceDetectorYN:
@@ -58,9 +56,9 @@ def _get_face_detector() -> cv2.FaceDetectorYN:
     return _face_detector
 
 
-def extract_frames(video_path: str, max_frames: int = 16) -> tuple[list[np.ndarray], dict]:
+def extract_frames(video_path, max_frames: int = MAX_FRAMES) -> tuple[list[np.ndarray], dict]:
     """Extrae hasta `max_frames` frames distribuidos uniformemente en el video."""
-    cap = cv2.VideoCapture(video_path)
+    cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
         raise ValueError(f"No se pudo abrir el video: {video_path}")
 
@@ -68,6 +66,8 @@ def extract_frames(video_path: str, max_frames: int = 16) -> tuple[list[np.ndarr
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         fps = cap.get(cv2.CAP_PROP_FPS) or 0.0
         duration = total_frames / fps if fps else 0.0
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
         sampled: list[np.ndarray] = []
         if total_frames <= 0:
@@ -84,7 +84,16 @@ def extract_frames(video_path: str, max_frames: int = 16) -> tuple[list[np.ndarr
                 if ok:
                     sampled.append(frame)
 
-        metadata = {"total_frames": total_frames, "fps": fps, "duration": duration}
+        if sampled:
+            height, width = sampled[0].shape[:2]
+
+        metadata = {
+            "total_frames": total_frames,
+            "fps": fps,
+            "duration": duration,
+            "width": width,
+            "height": height,
+        }
         return sampled, metadata
     finally:
         cap.release()
@@ -156,70 +165,114 @@ def _flicker_score(frames: list[np.ndarray]) -> float:
     return float(np.mean(diffs)) if diffs else 0.0
 
 
-def _compute_heuristics(frames: list[np.ndarray]) -> tuple[float, list[str]]:
-    artifacts: list[str] = []
-    faces_per_frame = [detect_faces(f) for f in frames]
+class VideoAnalyzer:
+    """
+    Analyze video files for AI-generated content detection
 
-    jitter = _face_jitter_score(faces_per_frame)
-    if jitter > JITTER_THRESHOLD:
-        artifacts.append("facial_inconsistencies")
+    Combina un clasificador de imagenes real/fake (app.ml, corrido por frame)
+    con heuristicas de OpenCV para detectar:
+    - Inconsistencias faciales entre frames (jitter de posicion/tamano)
+    - Artefactos de compresion (perdida de nitidez)
+    - Parpadeo/flicker de iluminacion entre frames
+    """
 
-    blur_values = [_blur_variance(f) for f in frames]
-    mean_blur = float(np.mean(blur_values)) if blur_values else 0.0
-    if mean_blur < BLUR_VARIANCE_THRESHOLD:
-        artifacts.append("compression_artifacts")
+    async def analyze(self, file_path: Path) -> AnalysisResponse:
+        """
+        Analyze video file for AI-generated content
 
-    flicker = _flicker_score(frames)
-    if flicker > FLICKER_THRESHOLD:
-        artifacts.append("temporal_flickering")
+        Args:
+            file_path: Path to video file
 
-    faces_found_ratio = sum(1 for f in faces_per_frame if f) / max(len(faces_per_frame), 1)
-    if faces_found_ratio == 0 and frames:
-        artifacts.append("no_face_detected")
+        Returns:
+            AnalysisResponse with analysis results
+        """
+        frames, meta = extract_frames(file_path)
+        if not frames:
+            raise ValueError("No se pudieron extraer frames del video")
 
-    jitter_component = min(jitter / max(JITTER_THRESHOLD, 1e-6), 1.0)
-    blur_component = min(max((BLUR_VARIANCE_THRESHOLD - mean_blur) / BLUR_VARIANCE_THRESHOLD, 0.0), 1.0)
-    flicker_component = min(flicker / max(FLICKER_THRESHOLD * 2, 1e-6), 1.0)
+        facial_consistency, frame_artifacts, compression_anomalies, artifacts = (
+            self._analyze_heuristics(frames)
+        )
 
-    heuristic_score = float(np.mean([jitter_component, blur_component, flicker_component]))
-    return heuristic_score, artifacts
+        inference_result = classify_frames(frames)
+        ml_score = inference_result.mean_fake_score
 
+        heuristic_score = (facial_consistency + frame_artifacts + compression_anomalies) / 3
+        overall_score = ML_WEIGHT * ml_score + HEURISTIC_WEIGHT * heuristic_score
+        is_ai_generated = overall_score >= settings.video_confidence_threshold
 
-def analyze_video(
-    video_path: str,
-    max_frames: int = 16,
-    progress_callback: Optional[Callable[[int], None]] = None,
-) -> VideoAnalysisResult:
-    def report(pct: int) -> None:
-        if progress_callback:
-            progress_callback(pct)
+        video_details = VideoAnalysisDetails(
+            facial_consistency=round(facial_consistency, 4),
+            frame_artifacts=round(frame_artifacts, 4),
+            compression_anomalies=round(compression_anomalies, 4),
+            artifacts=artifacts,
+        )
 
-    report(5)
-    frames, meta = extract_frames(video_path, max_frames=max_frames)
-    if not frames:
-        raise ValueError("No se pudieron extraer frames del video")
-    report(30)
+        metadata = self._extract_metadata(file_path, meta)
 
-    heuristic_score, artifacts = _compute_heuristics(frames)
-    report(55)
+        return AnalysisResponse(
+            is_ai_generated=is_ai_generated,
+            confidence=round(overall_score, 4),
+            analysis_type="video",
+            video_details=video_details,
+            metadata=metadata,
+            processing_time=0.0,  # Will be set by main.py
+        )
 
-    inference_result = classify_frames(frames)
-    report(85)
+    def _extract_metadata(self, file_path: Path, meta: dict) -> MediaMetadata:
+        file_path = Path(file_path)
+        file_size = file_path.stat().st_size if file_path.exists() else None
 
-    video_score = ML_WEIGHT * inference_result.mean_fake_score + HEURISTIC_WEIGHT * heuristic_score
-    is_ai_generated = video_score >= AI_GENERATED_THRESHOLD
+        return MediaMetadata(
+            duration=round(meta["duration"], 2),
+            format=file_path.suffix[1:].lower() or "unknown",
+            size=file_size,
+            resolution=f"{meta['width']}x{meta['height']}" if meta.get("width") else None,
+            fps=round(meta["fps"], 2),
+        )
 
-    report(100)
+    def _analyze_heuristics(
+        self, frames: list[np.ndarray]
+    ) -> tuple[float, float, float, List[ArtifactDetection]]:
+        artifacts: List[ArtifactDetection] = []
+        faces_per_frame = [detect_faces(f) for f in frames]
 
-    return VideoAnalysisResult(
-        is_ai_generated=is_ai_generated,
-        confidence=round(video_score, 4),
-        video_score=round(video_score, 4),
-        ml_score=round(inference_result.mean_fake_score, 4),
-        heuristic_score=round(heuristic_score, 4),
-        artifacts_detected=artifacts,
-        frames_analyzed=len(frames),
-        duration_seconds=round(meta["duration"], 2),
-        fps=round(meta["fps"], 2),
-        format=Path(video_path).suffix.lstrip(".").lower() or "unknown",
-    )
+        jitter = _face_jitter_score(faces_per_frame)
+        facial_consistency = min(jitter / max(JITTER_THRESHOLD, 1e-6), 1.0)
+        if jitter > JITTER_THRESHOLD:
+            artifacts.append(ArtifactDetection(
+                type="facial_inconsistencies",
+                confidence=round(facial_consistency, 4),
+                description="Saltos bruscos en la posicion/tamano del rostro entre frames",
+            ))
+
+        blur_values = [_blur_variance(f) for f in frames]
+        mean_blur = float(np.mean(blur_values)) if blur_values else 0.0
+        frame_artifacts = min(
+            max((BLUR_VARIANCE_THRESHOLD - mean_blur) / BLUR_VARIANCE_THRESHOLD, 0.0), 1.0
+        )
+        if mean_blur < BLUR_VARIANCE_THRESHOLD:
+            artifacts.append(ArtifactDetection(
+                type="compression_artifacts",
+                confidence=round(frame_artifacts, 4),
+                description="Perdida de nitidez consistente con artefactos de compresion/generacion",
+            ))
+
+        flicker = _flicker_score(frames)
+        compression_anomalies = min(flicker / max(FLICKER_THRESHOLD * 2, 1e-6), 1.0)
+        if flicker > FLICKER_THRESHOLD:
+            artifacts.append(ArtifactDetection(
+                type="temporal_flickering",
+                confidence=round(compression_anomalies, 4),
+                description="Cambios abruptos de iluminacion/color entre frames consecutivos",
+            ))
+
+        faces_found_ratio = sum(1 for f in faces_per_frame if f) / max(len(faces_per_frame), 1)
+        if faces_found_ratio == 0 and frames:
+            artifacts.append(ArtifactDetection(
+                type="no_face_detected",
+                confidence=1.0,
+                description="No se detecto ningun rostro en los frames analizados",
+            ))
+
+        return facial_consistency, frame_artifacts, compression_anomalies, artifacts

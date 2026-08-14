@@ -11,10 +11,10 @@ import pytest
 from app.ml.inference import classify_frames
 from app.ml.model_loader import get_predictor
 from app.services.video_analyzer import (
+    VideoAnalyzer,
     _blur_variance,
     _face_jitter_score,
     _flicker_score,
-    analyze_video,
     detect_faces,
     extract_frames,
 )
@@ -70,6 +70,7 @@ def test_extract_frames_returns_requested_count(sample_video_path):
 
     assert 1 <= len(frames) <= 5
     assert meta["fps"] > 0
+    assert meta["width"] > 0 and meta["height"] > 0
 
 
 def test_extract_frames_invalid_path_raises():
@@ -106,25 +107,23 @@ def test_flicker_score_zero_for_single_frame():
     assert _flicker_score([frame]) == 0.0
 
 
-def test_analyze_video_end_to_end(sample_video_path):
-    progress_values = []
-
-    result = analyze_video(
-        sample_video_path,
-        max_frames=5,
-        progress_callback=progress_values.append,
-    )
+@pytest.mark.asyncio
+async def test_video_analyzer_end_to_end(sample_video_path):
+    analyzer = VideoAnalyzer()
+    result = await analyzer.analyze(sample_video_path)
 
     assert 0.0 <= result.confidence <= 1.0
-    assert result.frames_analyzed >= 1
-    assert result.format == "mp4"
-    assert progress_values[-1] == 100
-    assert isinstance(result.artifacts_detected, list)
+    assert result.analysis_type == "video"
+    assert result.video_details is not None
+    assert result.metadata.format == "mp4"
+    assert isinstance(result.video_details.artifacts, list)
 
 
-def test_analyze_video_no_frames_raises(tmp_path):
+@pytest.mark.asyncio
+async def test_video_analyzer_no_frames_raises(tmp_path):
     empty_path = tmp_path / "empty.mp4"
     empty_path.write_bytes(b"")
 
+    analyzer = VideoAnalyzer()
     with pytest.raises(ValueError):
-        analyze_video(str(empty_path))
+        await analyzer.analyze(empty_path)
