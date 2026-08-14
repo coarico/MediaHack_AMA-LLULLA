@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { MessageCircle, X, Send, Link as LinkIcon, Upload, ClipboardList, Search, AlertTriangle, CheckCircle2, XCircle, Activity, Info, TrendingUp, BookOpen, Shield, Home } from 'lucide-react'
+import { MessageCircle, X, Send, Link as LinkIcon, Upload, ClipboardList, Search, AlertTriangle, CheckCircle2, XCircle, Activity, Info, TrendingUp, BookOpen, Shield, Home, Play } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { analyzeUrl, analyzeAudio, analyzeVideo } from './services/api'
 
@@ -8,6 +8,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('link')
   const [chatOpen, setChatOpen] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
+  const [progress, setProgress] = useState(0)
   const [urlValue, setUrlValue] = useState('')
   const [videoUrl, setVideoUrl] = useState('')
   const [selectedFile, setSelectedFile] = useState(null)
@@ -48,8 +49,17 @@ function App() {
 
   const handleAnalyze = async () => {
     setAnalyzing(true)
+    setProgress(0)
     setError(null)
     setAnalysisResult(null)
+
+    // Simular progreso durante el análisis
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 90) return prev
+        return prev + Math.random() * 15
+      })
+    }, 1000)
 
     try {
       let result
@@ -72,11 +82,13 @@ function App() {
         throw new Error('Por favor ingresa una URL o selecciona un archivo')
       }
 
+      setProgress(100)
       setAnalysisResult(result)
     } catch (err) {
       setError(err.message || 'Error al procesar el análisis')
       console.error('Error al analizar:', err)
     } finally {
+      clearInterval(progressInterval)
       setAnalyzing(false)
     }
   }
@@ -594,6 +606,25 @@ function App() {
                     )}
                   </button>
 
+                  {/* Barra de progreso */}
+                  {analyzing && (
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-gray-600">Procesando análisis...</span>
+                        <span className="text-xs font-mono text-gray-600">{Math.round(progress)}%</span>
+                      </div>
+                      <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#E9ECEF' }}>
+                        <div
+                          className="h-full rounded-full transition-all duration-300"
+                          style={{
+                            width: `${progress}%`,
+                            backgroundColor: '#00C896'
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {/* Resultados del análisis */}
                   {analysisResult && (() => {
                     const sm = analysisResult.metadata?.source_metadata
@@ -888,6 +919,38 @@ function App() {
                             <p className="text-gray-600">Procesado</p>
                             <p className="font-mono font-bold text-gray-900 mt-1">{analysisResult.processing_time?.toFixed(2) || 'N/A'}s</p>
                           </div>
+                        </div>
+                      </div>
+
+                      {/* ===== VIDEOS RELACIONADOS ===== */}
+                      <div className="rounded-xl border p-5" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#00C896' }} />
+                          <h4 className="text-sm font-bold text-gray-900 tracking-wide">VIDEOS RELACIONADOS</h4>
+                        </div>
+                        <div className="grid md:grid-cols-3 gap-4">
+                          {[
+                            { title: 'Debate presidencial completo', views: '125K', verified: true },
+                            { title: 'Análisis de propuestas económicas', views: '89K', verified: true },
+                            { title: 'Entrevista exclusiva candidato', views: '67K', verified: false }
+                          ].map((video, idx) => (
+                            <div key={idx} className="rounded-lg overflow-hidden" style={{ backgroundColor: '#FFFFFF', border: '1px solid #E9ECEF' }}>
+                              <div className="aspect-video flex items-center justify-center" style={{ backgroundColor: '#F8F9FA' }}>
+                                <Play className="w-8 h-8 text-gray-400" />
+                              </div>
+                              <div className="p-3">
+                                <p className="text-xs font-medium text-gray-900 mb-1 line-clamp-2">{video.title}</p>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs text-gray-600">{video.views} vistas</span>
+                                  {video.verified && (
+                                    <span className="flex items-center gap-1 text-xs" style={{ color: '#00C896' }}>
+                                      <CheckCircle2 className="w-3 h-3" /> Verificado
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </div>

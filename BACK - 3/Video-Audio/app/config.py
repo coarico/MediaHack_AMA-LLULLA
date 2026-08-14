@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     google_fact_check_api_key: str = ""
     
     # Speech-to-Text
-    whisper_model: str = "base"  # tiny, base, small, medium, large
+    whisper_model: str = "tiny"  # tiny, base, small, medium, large (tiny es más rápido)
     whisper_language: str = "es"
     
     # Content Analysis
