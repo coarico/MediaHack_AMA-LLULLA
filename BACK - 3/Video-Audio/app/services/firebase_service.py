@@ -119,29 +119,29 @@ def save_analysis_to_firestore(analysis_result: Dict, source_metadata: Optional[
             # LLM analysis
             "llm_execution": {
                 "provider": "groq",
-                "model": analysis_result.get("content_analysis", {}).get("llm_analysis", {}).get("model_used", "llama-3.3-70b-versatile"),
+                "model": _safe_llm(analysis_result).get("model_used", "llama-3.3-70b-versatile"),
                 "error": None,
                 "status": "used",
-                "tokens_used": analysis_result.get("content_analysis", {}).get("llm_analysis", {}).get("tokens_used", 0),
+                "tokens_used": _safe_llm(analysis_result).get("tokens_used", 0),
             },
 
             # LLM compact context (verdict, summary, claims)
             "llm_compact_context": {
-                "veredicto": analysis_result.get("content_analysis", {}).get("llm_analysis", {}).get("veredicto", ""),
-                "confianza": analysis_result.get("content_analysis", {}).get("llm_analysis", {}).get("confianza", 0),
-                "resumen": analysis_result.get("content_analysis", {}).get("llm_analysis", {}).get("resumen", ""),
-                "tema_principal": analysis_result.get("content_analysis", {}).get("llm_analysis", {}).get("tema_principal", ""),
-                "contexto_politico": analysis_result.get("content_analysis", {}).get("llm_analysis", {}).get("contexto_politico", ""),
-                "coincide_con_fuentes": analysis_result.get("content_analysis", {}).get("llm_analysis", {}).get("coincide_con_fuentes", False),
-                "afirmaciones_clave": analysis_result.get("content_analysis", {}).get("llm_analysis", {}).get("afirmaciones_clave", []),
-                "observaciones": analysis_result.get("content_analysis", {}).get("llm_analysis", {}).get("observaciones", ""),
+                "veredicto": _safe_llm(analysis_result).get("veredicto", ""),
+                "confianza": _safe_llm(analysis_result).get("confianza", 0),
+                "resumen": _safe_llm(analysis_result).get("resumen", ""),
+                "tema_principal": _safe_llm(analysis_result).get("tema_principal", ""),
+                "contexto_politico": _safe_llm(analysis_result).get("contexto_politico", ""),
+                "coincide_con_fuentes": _safe_llm(analysis_result).get("coincide_con_fuentes", False),
+                "afirmaciones_clave": _safe_llm(analysis_result).get("afirmaciones_clave", []),
+                "observaciones": _safe_llm(analysis_result).get("observaciones", ""),
             },
 
             # Relevance
             "information_relevance": {
-                "is_relevant": analysis_result.get("content_analysis", {}).get("llm_analysis", {}).get("is_relevant", True),
-                "relevance_category": analysis_result.get("content_analysis", {}).get("llm_analysis", {}).get("relevance_category", ""),
-                "non_relevant_reason": None if analysis_result.get("content_analysis", {}).get("llm_analysis", {}).get("is_relevant", True) else "Contenido no aplicable para verificacion",
+                "is_relevant": _safe_llm(analysis_result).get("is_relevant", True),
+                "relevance_category": _safe_llm(analysis_result).get("relevance_category", ""),
+                "non_relevant_reason": None if _safe_llm(analysis_result).get("is_relevant", True) else "Contenido no aplicable para verificacion",
             },
 
             # Verifiable claims from transcription
@@ -152,7 +152,7 @@ def save_analysis_to_firestore(analysis_result: Dict, source_metadata: Optional[
                     "source": "transcription",
                     "needs_external_verification": True,
                 }
-                for claim in analysis_result.get("content_analysis", {}).get("llm_analysis", {}).get("afirmaciones_clave", [])
+                for claim in _safe_llm(analysis_result).get("afirmaciones_clave", [])
             ],
 
             # Cross-source check (web context)
@@ -180,7 +180,7 @@ def save_analysis_to_firestore(analysis_result: Dict, source_metadata: Optional[
             "editorial_metadata": {
                 "publisher_type": "plataforma_video" if analysis_result.get("analysis_type") == "video" else "plataforma_audio",
                 "platform": source_metadata.get("platform", "upload") if source_metadata else "upload",
-                "thematic_tags": [analysis_result.get("content_analysis", {}).get("llm_analysis", {}).get("tema_principal", "")] if analysis_result.get("content_analysis", {}).get("llm_analysis", {}).get("tema_principal") else [],
+                "thematic_tags": [_safe_llm(analysis_result).get("tema_principal", "")] if _safe_llm(analysis_result).get("tema_principal") else [],
                 "inferred": True,
             },
 
@@ -275,9 +275,15 @@ def _serialize_value(v):
     return str(v)
 
 
+def _safe_llm(analysis_result: Dict) -> Dict:
+    """Get llm_analysis as dict, handling None safely."""
+    llm = analysis_result.get("content_analysis", {}).get("llm_analysis")
+    return llm if isinstance(llm, dict) else {}
+
+
 def _build_source_recommendation(analysis_result: Dict) -> str:
     """Build source recommendation text based on analysis."""
-    llm = analysis_result.get("content_analysis", {}).get("llm_analysis", {})
+    llm = _safe_llm(analysis_result)
     web = analysis_result.get("content_analysis", {}).get("web_context", {})
     articles = web.get("articles", [])
     reliable = [a for a in articles if a.get("is_reliable")]
@@ -291,7 +297,7 @@ def _build_source_recommendation(analysis_result: Dict) -> str:
 
 def _build_risk_assessment(analysis_result: Dict) -> Dict:
     """Build risk assessment from analysis."""
-    llm = analysis_result.get("content_analysis", {}).get("llm_analysis", {})
+    llm = _safe_llm(analysis_result)
     is_ai = analysis_result.get("is_ai_generated", False)
     is_manipulated = analysis_result.get("is_manipulated", False)
 
@@ -330,7 +336,7 @@ def _build_risk_assessment(analysis_result: Dict) -> Dict:
 
 def _build_evidence_summary(analysis_result: Dict) -> str:
     """Build evidence summary for audit."""
-    llm = analysis_result.get("content_analysis", {}).get("llm_analysis", {})
+    llm = _safe_llm(analysis_result)
     is_ai = analysis_result.get("is_ai_generated", False)
     web = analysis_result.get("content_analysis", {}).get("web_context", {})
     articles_count = web.get("total_articles_found", 0)
