@@ -28,6 +28,7 @@ httpx==0.25.2
 # Speech-to-Text
 openai-whisper==20231117
 ffmpeg-python==0.2.0
+imageio-ffmpeg==0.5.1
 yt-dlp==2024.8.6
 deepgram-sdk==7.7.0
 
