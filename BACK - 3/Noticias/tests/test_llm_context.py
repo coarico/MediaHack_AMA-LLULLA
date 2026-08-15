@@ -42,3 +42,27 @@ def test_build_llm_compact_context_keeps_candidate_claims() -> None:
     context = build_llm_compact_context(article, claims)
 
     assert context.candidate_claims == [claims[0].claim]
+
+
+def test_build_llm_compact_context_includes_backend_knowledge(monkeypatch) -> None:
+    article = ExtractedArticle(
+        url="https://example.com/noticia",
+        source_domain="example.com",
+        title="Auditoria electoral revisa actas",
+        text="La nota menciona auditoria electoral y revision de actas.",
+    )
+    knowledge = [
+        {
+            "source_id": "manual",
+            "title": "Manual electoral",
+            "text": "Las actas deben contrastarse con evidencia documental.",
+            "keywords": ["actas"],
+            "metadata": {"source_file": "manual.csv"},
+        }
+    ]
+    monkeypatch.setattr("app.services.llm_context.find_relevant_knowledge", lambda query: knowledge)
+
+    context = build_llm_compact_context(article)
+
+    assert context.knowledge_context == knowledge
+    assert "Manual electoral" in compact_context_to_prompt(context)

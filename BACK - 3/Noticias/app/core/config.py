@@ -62,11 +62,15 @@ class Settings:
     news_rss_timeout_seconds: float = 6
     duckduckgo_fallback_query_limit: int = 2
     duckduckgo_timeout_seconds: float = 4
+    related_search_time_budget_seconds: float = 15
     request_timeout_seconds: float = 12
     max_html_bytes: int = 2_000_000
     max_article_chars: int = 24_000
     related_news_limit: int = 6
     related_source_search_limit: int = 12
+    knowledge_sources_dir: str = "data/knowledge_sources"
+    knowledge_context_limit: int = 5
+    knowledge_context_chunk_chars: int = 900
 
     @property
     def cors_origins(self) -> list[str]:
@@ -109,11 +113,15 @@ def get_settings() -> Settings:
         news_rss_timeout_seconds=float(_env("NEWS_RSS_TIMEOUT_SECONDS", "6")),
         duckduckgo_fallback_query_limit=int(_env("DUCKDUCKGO_FALLBACK_QUERY_LIMIT", "2")),
         duckduckgo_timeout_seconds=float(_env("DUCKDUCKGO_TIMEOUT_SECONDS", "4")),
+        related_search_time_budget_seconds=float(_env("RELATED_SEARCH_TIME_BUDGET_SECONDS", "15")),
         request_timeout_seconds=float(_env("REQUEST_TIMEOUT_SECONDS", "12")),
         max_html_bytes=int(_env("MAX_HTML_BYTES", "2000000")),
         max_article_chars=int(_env("MAX_ARTICLE_CHARS", "24000")),
         related_news_limit=int(_env("RELATED_NEWS_LIMIT", "6")),
         related_source_search_limit=int(_env("RELATED_SOURCE_SEARCH_LIMIT", "12")),
+        knowledge_sources_dir=_env("KNOWLEDGE_SOURCES_DIR", "data/knowledge_sources"),
+        knowledge_context_limit=int(_env("KNOWLEDGE_CONTEXT_LIMIT", "5")),
+        knowledge_context_chunk_chars=int(_env("KNOWLEDGE_CONTEXT_CHUNK_CHARS", "900")),
     )
 
 

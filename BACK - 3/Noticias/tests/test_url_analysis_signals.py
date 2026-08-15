@@ -48,6 +48,28 @@ def test_content_quality_flags_missing_author_and_sources() -> None:
     assert quality.quality_score < 100
 
 
+def test_content_quality_sources_weight_sixty_points() -> None:
+    repeated_text = (
+        "Auditoria electoral revisa actas y procedimientos de conteo con detalle documental. "
+        "La noticia mantiene relacion directa entre titulo y cuerpo informativo. "
+    ) * 12
+    article = ExtractedArticle(
+        url="https://example.com/noticia",
+        source_domain="example.com",
+        title="Auditoria electoral revisa actas",
+        author="Redaccion",
+        published_at="2026-08-15",
+        text=repeated_text,
+    )
+
+    quality = evaluate_content_quality(article)
+
+    assert quality.has_author is True
+    assert quality.has_date is True
+    assert quality.has_sources is False
+    assert quality.quality_score == 40
+
+
 def test_extracts_verifiable_claims_with_numbers() -> None:
     article = ExtractedArticle(
         url="https://example.com/noticia",

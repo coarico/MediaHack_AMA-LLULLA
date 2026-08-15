@@ -11,16 +11,17 @@ class WebSearcher:
     """Search the web for news and articles related to video content"""
 
     def __init__(self):
-        self._ddgs = None
+        self.search_attempts = 2
+        self.search_timeout_seconds = 12
+        self.retry_sleep_seconds = 1
+        self.empty_result_sleep_seconds = 1
 
     def _get_ddgs(self):
-        if self._ddgs is None:
-            try:
-                from ddgs import DDGS
-            except ImportError:
-                from duckduckgo_search import DDGS
-            self._ddgs = DDGS()
-        return self._ddgs
+        try:
+            from ddgs import DDGS
+        except ImportError:
+            from duckduckgo_search import DDGS
+        return DDGS()
 
     async def search_news(self, query: str, max_results: int = 5) -> List[Dict]:
         """
@@ -34,11 +35,12 @@ class WebSearcher:
             List of news articles with title, url, snippet, source
         """
         results = []
-        for attempt in range(3):
+        for attempt in range(self.search_attempts):
             try:
                 ddgs = self._get_ddgs()
-                raw = await asyncio.to_thread(
-                    ddgs.news, query, region='wt-wt', max_results=max_results
+                raw = await asyncio.wait_for(
+                    asyncio.to_thread(ddgs.news, query, region='wt-wt', max_results=max_results),
+                    timeout=self.search_timeout_seconds,
                 )
                 for item in raw:
                     results.append({
@@ -52,17 +54,18 @@ class WebSearcher:
                 if results:
                     break
                 # No news results found, try again
-                await asyncio.sleep(2)
+                await asyncio.sleep(self.empty_result_sleep_seconds)
             except Exception as e:
                 print(f"ℹ️ News search retry {attempt+1}: {e}")
-                await asyncio.sleep(3)
+                await asyncio.sleep(self.retry_sleep_seconds)
         
         # Fallback to text search if news returned nothing
         if not results:
             try:
                 ddgs = self._get_ddgs()
-                raw = await asyncio.to_thread(
-                    ddgs.text, query, max_results=max_results
+                raw = await asyncio.wait_for(
+                    asyncio.to_thread(ddgs.text, query, max_results=max_results),
+                    timeout=self.search_timeout_seconds,
                 )
                 for item in raw:
                     results.append({
@@ -81,11 +84,12 @@ class WebSearcher:
     async def search_general(self, query: str, max_results: int = 5) -> List[Dict]:
         """General web search (not restricted to news)"""
         results = []
-        for attempt in range(3):
+        for attempt in range(self.search_attempts):
             try:
                 ddgs = self._get_ddgs()
-                raw = await asyncio.to_thread(
-                    ddgs.text, query, max_results=max_results
+                raw = await asyncio.wait_for(
+                    asyncio.to_thread(ddgs.text, query, max_results=max_results),
+                    timeout=self.search_timeout_seconds,
                 )
                 for item in raw:
                     results.append({
@@ -98,10 +102,10 @@ class WebSearcher:
                     })
                 if results:
                     break
-                await asyncio.sleep(2)
+                await asyncio.sleep(self.empty_result_sleep_seconds)
             except Exception as e:
                 print(f"⚠️ Web search attempt {attempt+1} failed: {e}")
-                await asyncio.sleep(3)
+                await asyncio.sleep(self.retry_sleep_seconds)
 
         return results
 

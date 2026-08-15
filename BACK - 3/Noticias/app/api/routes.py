@@ -1,7 +1,7 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 
 from app.core.security import UnsafeUrlError, validate_public_http_url
-from app.schemas.news import AnalysisListItem, AnalyzeRequest, AnalyzeResponse, KuybotRequest, KuybotResponse, SourceInput
+from app.schemas.news import AnalysisListItem, AnalyzeRequest, AnalyzeResponse, KuybotRequest, KuybotResponse, RelatedNewsItem, SourceInput
 from app.services.ai_analyzer import analyze_article_with_metadata
 from app.services.article_extractor import ExtractionError, extract_article
 from app.services.article_fetcher import FetchError, fetch_html
@@ -123,6 +123,7 @@ async def analyze_news(request: AnalyzeRequest, background_tasks: BackgroundTask
             source_classification,
             fetched.url_health,
             len(related_news),
+            related_news,
             url_risk_signals,
             content_quality,
             verifiable_claims,
@@ -162,8 +163,9 @@ async def _complete_related_analysis(response: AnalyzeResponse) -> None:
 
 
 def _refresh_related_sections(response: AnalyzeResponse, related_news, final_status: str) -> None:
-    claim_contrasts = build_claim_contrasts(response.verifiable_claims, related_news)
-    cross_source_check = build_cross_source_check(related_news)
+    sorted_related_news = _sort_related_news(related_news)
+    claim_contrasts = build_claim_contrasts(response.verifiable_claims, sorted_related_news)
+    cross_source_check = build_cross_source_check(sorted_related_news)
     source_verification = build_source_verification(
         response.source_classification,
         response.content_attribution,
@@ -195,7 +197,7 @@ def _refresh_related_sections(response: AnalyzeResponse, related_news, final_sta
     response.risk_assessment = _build_risk_assessment(
         response.analysis,
         response.url_health,
-        len(related_news),
+        len(sorted_related_news),
         response.url_risk_signals,
         response.content_quality,
         cross_source_check,
@@ -206,7 +208,8 @@ def _refresh_related_sections(response: AnalyzeResponse, related_news, final_sta
         response.information_relevance,
         response.source_classification,
         response.url_health,
-        len(related_news),
+        len(sorted_related_news),
+        sorted_related_news,
         response.url_risk_signals,
         response.content_quality,
         response.verifiable_claims,
@@ -218,7 +221,7 @@ def _refresh_related_sections(response: AnalyzeResponse, related_news, final_sta
         response.gender_impact_assessment,
         news_reliability_assessment,
     )
-    response.related_news = related_news
+    response.related_news = sorted_related_news
     response.status = final_status
     response.updated_at = now_utc()
 
@@ -330,6 +333,7 @@ def _build_audit_metadata(
     source_classification,
     url_health,
     related_count: int,
+    related_news: list[RelatedNewsItem],
     url_risk_signals,
     content_quality,
     verifiable_claims,
@@ -400,6 +404,22 @@ def _build_audit_metadata(
         ),
         AuditEvidenceItem(
             type="risk",
+            label="Revision de narrativa",
+            value=(
+                f"sesgo: {analysis.bias_analysis.direction} ({analysis.bias_analysis.score}) / "
+                f"clickbait: {analysis.clickbait.score} / "
+                f"senales de manipulacion: {len(analysis.manipulation_signals)}"
+            ),
+            severity=(
+                "alta"
+                if analysis.clickbait.score >= 70 or analysis.credibility.risk_level in {"alto", "critico"}
+                else "media"
+                if analysis.clickbait.score >= 40 or analysis.manipulation_signals
+                else "baja"
+            ),
+        ),
+        AuditEvidenceItem(
+            type="risk",
             label="Impacto de genero",
             value=f"{gender_impact_assessment.status_label} / {gender_impact_assessment.score}",
             severity=(
@@ -415,6 +435,12 @@ def _build_audit_metadata(
             label="Noticias relacionadas encontradas",
             value=f"{related_count} ({cross_source_check.coverage_status})",
             severity="media" if related_count == 0 else "baja",
+        ),
+        AuditEvidenceItem(
+            type="risk",
+            label="Lenguaje de odio o degradante",
+            value=_hate_signal_summary(gender_impact_assessment),
+            severity="alta" if _has_hate_signal(gender_impact_assessment) else "baja",
         ),
         AuditEvidenceItem(
             type="risk",
@@ -488,6 +514,14 @@ def _build_audit_metadata(
             {
                 "title": "Resumen del analisis",
                 "bullets": [analysis.summary, analysis.recommendation],
+            },
+            {
+                "title": "Noticias mas relacionadas",
+                "items": _related_news_items_for_audit(related_news[:3]),
+            },
+            {
+                "title": "Otras noticias para auditoria",
+                "items": _related_news_items_for_audit(related_news[3:]),
             },
             {
                 "title": "Recomendaciones para revisar",
@@ -566,7 +600,7 @@ def _build_review_recommendations(
             }
         )
 
-    if not source_classification.is_radar_media and source_classification.registry_status == "unknown":
+    if source_classification.registry_status == "unknown":
         recommendations.append(
             {
                 "title": "Fuente no registrada en la base interna",
@@ -609,3 +643,50 @@ def _build_review_recommendations(
         seen.add(key)
         unique.append(item)
     return unique[:5]
+
+
+def _sort_related_news(related_news: list[RelatedNewsItem]) -> list[RelatedNewsItem]:
+    return sorted(
+        related_news,
+        key=lambda item: (
+            item.relation_score or 0,
+            item.source_veracity_score or item.source_confidence_score or 0,
+            1 if item.published_at else 0,
+        ),
+        reverse=True,
+    )
+
+
+def _related_news_items_for_audit(related_news: list[RelatedNewsItem]) -> list[dict]:
+    if not related_news:
+        return [{"note": "No se encontraron noticias relacionadas en esta etapa."}]
+    return [
+        {
+            "title": item.title,
+            "url": item.url,
+            "source": item.source_name or item.source,
+            "relation_label": item.relation_label,
+            "relation_score": item.relation_score,
+            "source_veracity_score": item.source_veracity_score,
+        }
+        for item in related_news
+    ]
+
+
+def _has_hate_signal(gender_impact_assessment) -> bool:
+    hate_like_signals = {
+        "lenguaje_degradante",
+        "descalificacion_genero",
+        "amenazas_intimidacion",
+        "hostigamiento_reiterado",
+    }
+    return any(signal.signal_type in hate_like_signals for signal in gender_impact_assessment.signals)
+
+
+def _hate_signal_summary(gender_impact_assessment) -> str:
+    if not gender_impact_assessment.signals:
+        return "Sin senales relevantes."
+    labels = [signal.label for signal in gender_impact_assessment.signals if signal.severity in {"media", "alta"}]
+    if not labels:
+        return "Sin senales relevantes."
+    return "; ".join(labels[:3])

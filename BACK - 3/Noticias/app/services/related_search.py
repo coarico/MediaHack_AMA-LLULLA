@@ -1,6 +1,7 @@
 from html import unescape
 from html.parser import HTMLParser
 from dataclasses import dataclass
+from time import monotonic
 import re
 import unicodedata
 import xml.etree.ElementTree as ET
@@ -120,6 +121,8 @@ async def iter_related_news_batches(
     original_url: str,
     min_batch_size: int = 2,
 ):
+    time_budget_seconds = getattr(settings, "related_search_time_budget_seconds", 15)
+    deadline = monotonic() + max(1.0, float(time_budget_seconds))
     queries = build_related_search_queries(analysis)
     public_related_queries = build_public_related_queries(analysis, queries)
     results: list[RelatedNewsItem] = []
@@ -127,7 +130,7 @@ async def iter_related_news_batches(
     seen_titles = {_normalize(analysis.topic)}
 
     if settings.gdelt_enabled:
-        async for batch in _iter_gdelt_batches(queries, seen_urls, min_batch_size):
+        async for batch in _iter_gdelt_batches(queries, seen_urls, min_batch_size, deadline):
             filtered_batch = _filter_related_items(batch, seen_titles, analysis)
             if not filtered_batch:
                 continue
@@ -135,9 +138,13 @@ async def iter_related_news_batches(
             yield filtered_batch
             if len(results) >= settings.related_news_limit:
                 return
+            if monotonic() >= deadline:
+                return
 
     if settings.news_rss_enabled:
         for query in public_related_queries[: settings.news_rss_query_limit]:
+            if monotonic() >= deadline:
+                return
             batch: list[RelatedNewsItem] = []
             for item in _search_news_rss(query.query, query.relation_reason):
                 prepared_item = _prepare_related_item(item, analysis)
@@ -162,6 +169,8 @@ async def iter_related_news_batches(
                 yield batch
 
     for query in public_related_queries[: settings.duckduckgo_fallback_query_limit]:
+        if monotonic() >= deadline:
+            return
         batch: list[RelatedNewsItem] = []
         for item in _search_public_web(query.query, query.relation_reason):
             prepared_item = _prepare_related_item(item, analysis)
@@ -195,10 +204,17 @@ async def _search_gdelt_queries(queries: list[SearchQuery], seen_urls: set[str])
     return results
 
 
-async def _iter_gdelt_batches(queries: list[SearchQuery], seen_urls: set[str], min_batch_size: int = 2):
+async def _iter_gdelt_batches(
+    queries: list[SearchQuery],
+    seen_urls: set[str],
+    min_batch_size: int = 2,
+    deadline: float | None = None,
+):
     results: list[RelatedNewsItem] = []
     batch: list[RelatedNewsItem] = []
     for query in queries[: settings.gdelt_query_limit]:
+        if deadline is not None and monotonic() >= deadline:
+            break
         gdelt_query = _to_gdelt_query(query.query)
         if not gdelt_query:
             continue

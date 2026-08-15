@@ -185,9 +185,29 @@ Si el dominio coincide con esa lista, devuelve:
 
 Si no coincide, lo clasifica como `medio_no_radar`, `red_social`, `blog`, `gobierno`, `institucion`, `empresa`, `ong`, `plataforma_video`, `otro` o `desconocido`.
 
-## CSV Para RAG Sin Gastar Muchos Tokens
+## Fuentes De Conocimiento Para La IA
 
-El CSV no se envia completo al modelo. Primero se convierte a chunks locales:
+Los archivos de conocimiento viajan con el backend. Coloca los `.csv`, `.ods` y `.pdf` en:
+
+```txt
+data/knowledge_sources/
+```
+
+Cuando se analiza una noticia, el backend lee esos archivos, arma chunks locales y manda al LLM solo los fragmentos mas relevantes en `llm_compact_context.knowledge_context`.
+
+Variables opcionales:
+
+```env
+KNOWLEDGE_SOURCES_DIR=data/knowledge_sources
+KNOWLEDGE_CONTEXT_LIMIT=5
+KNOWLEDGE_CONTEXT_CHUNK_CHARS=900
+```
+
+No subas `.env`, credenciales, llaves privadas ni documentos sensibles.
+
+### CSV Offline Opcional
+
+Si necesitas generar chunks manualmente para inspeccion:
 
 ```bash
 python scripts/ingest_csv.py data/mi_base.csv --source-id radar_csv_001 --output out/knowledge_chunks.jsonl
@@ -199,4 +219,4 @@ Si tus columnas tienen nombres especificos:
 python scripts/ingest_csv.py data/mi_base.csv --source-id radar_csv_001 --text-columns contenido descripcion --title-columns titulo
 ```
 
-La salida `JSONL` se puede subir a Firestore en `knowledgeChunks`. Luego el analisis busca solo los chunks relevantes y manda al LLM un contexto corto.
+La salida `JSONL` es solo auxiliar. El flujo principal del backend usa `data/knowledge_sources/`.

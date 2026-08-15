@@ -2,6 +2,7 @@ import os
 import shutil
 import uuid
 import httpx
+import cv2
 from pathlib import Path
 from fastapi import UploadFile
 from typing import Optional
@@ -102,6 +103,12 @@ class FileHandler:
         Raises:
             Exception: If download fails
         """
+        if settings.download_provider.lower() == "external":
+            try:
+                return await self._download_with_external_worker(url)
+            except Exception as external_err:
+                print(f"⚠️ External download provider failed, falling back to local: {external_err}")
+
         # Platforms supported by yt-dlp
         yt_dlp_platforms = [
             'youtube.com', 'youtu.be',
@@ -141,6 +148,53 @@ class FileHandler:
                 f.write(response.content)
             
             return file_path, None
+
+    async def _download_with_external_worker(self, url: str) -> tuple[Path, dict]:
+        worker_url = (settings.download_worker_url or "").rstrip("/")
+        if not worker_url:
+            raise ValueError(
+                "DOWNLOAD_PROVIDER=external requiere configurar DOWNLOAD_WORKER_URL"
+            )
+
+        endpoint = f"{worker_url}/download"
+        headers = {}
+        if settings.download_worker_api_key:
+            headers["Authorization"] = f"Bearer {settings.download_worker_api_key}"
+
+        async with httpx.AsyncClient(timeout=float(settings.download_worker_timeout_seconds)) as client:
+            response = await client.post(endpoint, json={"url": url}, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+
+            media_url = data.get("download_url") or data.get("media_url")
+            if not media_url:
+                raise ValueError("El worker externo no devolvió `download_url`")
+
+            source_metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else None
+            return await self._download_direct_media_file(media_url, source_metadata)
+
+    async def _download_direct_media_file(self, media_url: str, source_metadata: Optional[dict] = None) -> tuple[Path, dict]:
+        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+            response = await client.get(media_url)
+            response.raise_for_status()
+
+            content_type = (response.headers.get('content-type') or '').lower()
+            if 'text/html' in content_type:
+                raise ValueError("La URL del media devolvió HTML en lugar de un archivo de video/audio")
+
+            file_extension = self._get_extension_from_url(media_url)
+            if not file_extension:
+                file_extension = self._get_extension_from_content_type(content_type)
+
+            unique_filename = f"{uuid.uuid4()}.{file_extension}"
+            file_path = self.temp_dir / unique_filename
+            with open(file_path, "wb") as f:
+                f.write(response.content)
+
+            if self.is_video_file(file_path):
+                self._validate_video_file(file_path)
+
+            return file_path, source_metadata
     
     async def _download_with_ytdlp(self, url: str) -> tuple[Path, dict]:
         """
@@ -164,64 +218,92 @@ class FileHandler:
         # Get ffmpeg binary from imageio-ffmpeg
         ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
         
-        ydl_opts = {
+        # Base options shared across all attempts
+        base_opts = {
             'format': 'best[ext=mp4][height<=720]/best[height<=720]/best',
             'outtmpl': output_template,
             'quiet': True,
             'no_warnings': True,
             'ffmpeg_location': ffmpeg_path,
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['android', 'web'],
-                }
-            },
             'http_headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                 'Accept-Language': 'en-US,en;q=0.5',
-                'Referer': 'https://www.tiktok.com/',
             },
         }
-        
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                filename = ydl.prepare_filename(info)
-                
-                # Detect platform from extractor
-                extractor = info.get('extractor_key', 'Unknown')
-                
-                # Extract metadata (works across platforms)
-                metadata = {
-                    'source_url': url,
-                    'title': info.get('title', ''),
-                    'channel': info.get('channel', '') or info.get('uploader', ''),
-                    'channel_id': info.get('channel_id', ''),
-                    'uploader': info.get('uploader', ''),
-                    'upload_date': info.get('upload_date', ''),
-                    'description': info.get('description', ''),
-                    'view_count': info.get('view_count', 0),
-                    'like_count': info.get('like_count', 0),
-                    'duration': info.get('duration', 0),
-                    'is_verified': info.get('channel_is_verified', False),
-                    'platform': extractor,
-                    'thumbnail': info.get('thumbnail', ''),
-                    'thumbnails': info.get('thumbnails', [])
-                }
-                
-            return Path(filename), metadata
-        except yt_dlp.utils.DownloadError as e:
-            # Fallback: try alternative methods based on platform
-            print(f"🔄 yt-dlp failed, trying alternative download methods...")
+
+        # Optional proxy
+        if settings.ytdlp_proxy_url:
+            base_opts['proxy'] = settings.ytdlp_proxy_url
+            print(f"🌐 Using proxy for yt-dlp: {settings.ytdlp_proxy_url[:20]}...")
+
+        # Optional cookies file
+        if settings.ytdlp_cookies_file:
+            cookie_path = Path(settings.ytdlp_cookies_file)
+            if cookie_path.exists():
+                base_opts['cookiefile'] = str(cookie_path)
+                print(f"🍪 Using cookies file for yt-dlp")
+
+        # Try different client strategies for YouTube anti-bot bypass
+        client_strategies = [
+            {'player_client': ['ios', 'android']},
+            {'player_client': ['android', 'web']},
+            {'player_client': ['web_safari', 'default']},
+        ]
+
+        last_error = None
+        for i, strategy in enumerate(client_strategies):
+            ydl_opts = {**base_opts, 'extractor_args': {'youtube': strategy}}
             try:
-                result = await self._download_fallback(url)
-                if result:
-                    return result
-            except Exception as fallback_err:
-                print(f"⚠️ All fallback methods failed: {fallback_err}")
-            raise ValueError(f"No se pudo descargar el video de esta plataforma. Intenta con YouTube u otra URL. ({str(e)[:80]})")
-        except Exception as e:
-            raise ValueError(f"Error al descargar: {str(e)[:100]}")
+                print(f"🔄 yt-dlp attempt {i+1}/{len(client_strategies)} (client={strategy['player_client']})")
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                    filename = ydl.prepare_filename(info)
+                    downloaded_path = Path(filename)
+                    
+                    extractor = info.get('extractor_key', 'Unknown')
+                    metadata = {
+                        'source_url': url,
+                        'title': info.get('title', ''),
+                        'channel': info.get('channel', '') or info.get('uploader', ''),
+                        'channel_id': info.get('channel_id', ''),
+                        'uploader': info.get('uploader', ''),
+                        'upload_date': info.get('upload_date', ''),
+                        'description': info.get('description', ''),
+                        'view_count': info.get('view_count', 0),
+                        'like_count': info.get('like_count', 0),
+                        'duration': info.get('duration', 0),
+                        'is_verified': info.get('channel_is_verified', False),
+                        'platform': extractor,
+                        'thumbnail': info.get('thumbnail', ''),
+                        'thumbnails': info.get('thumbnails', [])
+                    }
+
+                self._validate_video_file(downloaded_path)
+                return downloaded_path, metadata
+            except yt_dlp.utils.DownloadError as e:
+                last_error = e
+                print(f"⚠️ Attempt {i+1} failed: {str(e)[:100]}")
+                continue
+            except Exception as e:
+                last_error = e
+                print(f"⚠️ Attempt {i+1} unexpected error: {str(e)[:100]}")
+                continue
+
+        # All yt-dlp strategies failed, try fallback
+        print(f"🔄 All yt-dlp strategies failed, trying fallback methods...")
+        try:
+            result = await self._download_fallback(url)
+            if result:
+                return result
+        except Exception as fallback_err:
+            print(f"⚠️ Fallback also failed: {fallback_err}")
+
+        error_msg = str(last_error)[:120] if last_error else "unknown error"
+        raise ValueError(
+            f"No se pudo descargar el video. yt-dlp agotó todos los intentos ({error_msg}). "
+            f"Configura YTDLP_PROXY_URL o YTDLP_COOKIES_FILE en Railway para bypass anti-bot."
+        )
     
     async def _download_fallback(self, url: str) -> tuple[Path, dict]:
         """Fallback download for any platform when yt-dlp fails"""
@@ -229,7 +311,7 @@ class FileHandler:
         import imageio_ffmpeg
         
         # Detect platform
-        is_tiktok = 'tiktok.com' in url
+        is_tiktok = self._is_tiktok_url(url)
         platform = 'TikTok' if is_tiktok else 'Unknown'
         
         async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
@@ -284,8 +366,13 @@ class FileHandler:
             video_response = await client.get(download_url)
             if video_response.status_code != 200:
                 raise ValueError(f"Download failed: HTTP {video_response.status_code}")
+
+            content_type = (video_response.headers.get('content-type') or '').lower()
+            if 'text/html' in content_type:
+                raise ValueError("La URL devolvió HTML en lugar de un archivo de video")
             
             output_path.write_bytes(video_response.content)
+            self._validate_video_file(output_path)
             
             # Get duration with ffprobe
             ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
@@ -305,6 +392,26 @@ class FileHandler:
             
             print(f"✅ Fallback download successful: {output_path.name}")
             return output_path, metadata
+
+    def _is_tiktok_url(self, url: str) -> bool:
+        return 'tiktok.com' in url
+
+    def _is_youtube_url(self, url: str) -> bool:
+        return 'youtube.com' in url or 'youtu.be' in url
+
+    def _validate_video_file(self, file_path: Path) -> None:
+        if not file_path.exists() or file_path.stat().st_size < 1024:
+            raise ValueError("El archivo descargado está vacío o incompleto")
+
+        cap = cv2.VideoCapture(str(file_path))
+        if not cap.isOpened():
+            cap.release()
+            raise ValueError("El archivo descargado no es un video válido")
+
+        ok, _ = cap.read()
+        cap.release()
+        if not ok:
+            raise ValueError("No se pudieron leer frames del video descargado")
     
     def is_audio_file(self, file_path: Path) -> bool:
         """Check if file is an audio file based on extension"""
