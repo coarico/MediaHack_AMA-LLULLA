@@ -40,6 +40,9 @@ class Settings:
     llm_fallback_on_error: bool = True
     openai_api_key: str | None = None
     openai_model: str = DEFAULT_OPENAI_MODEL
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-2.0-flash"
+    fact_check_api_key: str | None = None
     groq_api_key: str | None = None
     groq_model: str = DEFAULT_GROQ_MODEL
     groq_base_url: str = DEFAULT_GROQ_BASE_URL
@@ -47,6 +50,8 @@ class Settings:
     firebase_credentials_path: str | None = None
     firestore_collection: str = "contentAnalyses"
     firestore_transport: str = "rest"
+    google_search_api_key: str | None = None
+    google_search_cx: str | None = None
     gdelt_enabled: bool = True
     gdelt_timespan: str = "3months"
     gdelt_max_records: int = 10
@@ -82,6 +87,9 @@ def get_settings() -> Settings:
         llm_fallback_on_error=_env_bool("LLM_FALLBACK_ON_ERROR", True),
         openai_api_key=_env_optional("OPENAI_API_KEY"),
         openai_model=_env("OPENAI_MODEL", DEFAULT_OPENAI_MODEL),
+        gemini_api_key=_env_optional("GEMINI_API_KEY") or _env_optional("GOOGLE_API_KEY"),
+        gemini_model=_env("GEMINI_MODEL", "gemini-2.0-flash"),
+        fact_check_api_key=_env_optional("FACT_CHECK_API_KEY") or _env_optional("GOOGLE_FACT_CHECK_API_KEY"),
         groq_api_key=_env_optional("GROQ_API_KEY"),
         groq_model=_env("GROQ_MODEL", DEFAULT_GROQ_MODEL),
         groq_base_url=_env("GROQ_BASE_URL", DEFAULT_GROQ_BASE_URL),
@@ -89,6 +97,8 @@ def get_settings() -> Settings:
         firebase_credentials_path=_env_optional("GOOGLE_APPLICATION_CREDENTIALS"),
         firestore_collection=_env("FIRESTORE_ANALYSES_COLLECTION", "contentAnalyses"),
         firestore_transport=_env("FIRESTORE_TRANSPORT", "rest").lower(),
+        google_search_api_key=_env_optional("GOOGLE_SEARCH_API_KEY"),
+        google_search_cx=_env_optional("GOOGLE_SEARCH_CX"),
         gdelt_enabled=_env_bool("GDELT_ENABLED", True),
         gdelt_timespan=_env("GDELT_TIMESPAN", "3months"),
         gdelt_max_records=int(_env("GDELT_MAX_RECORDS", "10")),

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 
 from app.core.security import UnsafeUrlError, validate_public_http_url
-from app.schemas.news import AnalysisListItem, AnalyzeRequest, AnalyzeResponse, SourceInput
+from app.schemas.news import AnalysisListItem, AnalyzeRequest, AnalyzeResponse, KuybotRequest, KuybotResponse, SourceInput
 from app.services.ai_analyzer import analyze_article_with_metadata
 from app.services.article_extractor import ExtractionError, extract_article
 from app.services.article_fetcher import FetchError, fetch_html
@@ -14,6 +14,7 @@ from app.services.editorial_metadata import build_editorial_metadata
 from app.services.firestore_store import new_analysis_id, now_utc, store
 from app.services.gender_impact import assess_gender_impact
 from app.services.information_relevance import classify_information_relevance
+from app.services.kuybot import ask_kuybot
 from app.services.llm_context import build_llm_compact_context
 from app.services.news_reliability import build_news_reliability_assessment
 from app.services.related_search import iter_related_news_batches, search_related_news
@@ -220,6 +221,18 @@ def _refresh_related_sections(response: AnalyzeResponse, related_news, final_sta
     response.related_news = related_news
     response.status = final_status
     response.updated_at = now_utc()
+
+
+@router.post("/kuybot", response_model=KuybotResponse)
+async def ask_news_kuybot(request: KuybotRequest) -> KuybotResponse:
+    try:
+        return await ask_kuybot(
+            request.question,
+            request.news,
+            [message.model_dump(mode="json") for message in request.history],
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Error generando respuesta de Kuybot: {exc}") from exc
 
 
 @router.get("/analysis/{analysis_id}")
