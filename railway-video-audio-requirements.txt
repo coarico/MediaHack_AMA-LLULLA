@@ -1,0 +1,42 @@
+# Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Audio Analysis
+librosa==0.10.1
+soundfile==0.12.1
+numpy==1.24.3
+
+# Video Analysis
+opencv-python==4.8.1.78
+Pillow==10.1.0
+torch==2.4.1
+transformers==4.44.2
+
+# Data Validation
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Utilities
+python-dotenv==1.0.0
+aiofiles==23.2.1
+
+# HTTP Client
+httpx==0.25.2
+
+# Speech-to-Text
+openai-whisper==20231117
+ffmpeg-python==0.2.0
+yt-dlp==2024.8.6
+deepgram-sdk==7.7.0
+
+# Fact-Checking & Content Analysis
+google-api-python-client==2.108.0
+google-auth==2.25.2
+google-auth-oauthlib==1.2.0
+google-auth-httplib2==0.2.0
+
+# Advanced ML Models
+sentencepiece==0.1.99
+protobuf==4.25.1

@@ -1,32 +1,34 @@
 FROM python:3.11-slim
 
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PIP_NO_CACHE_DIR=1
+
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     ffmpeg \
-    git \
+    gcc \
+    g++ \
+    libgl1 \
+    libglib2.0-0 \
+    libsndfile1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # Upgrade pip and install build dependencies
-RUN pip install --upgrade pip setuptools wheel
+RUN pip install --upgrade pip setuptools==80.9.0 wheel
 
 # Copy requirements and install
 COPY requirements.txt .
 
-# Install openai-whisper from git to avoid pkg_resources bug
-RUN pip install --no-cache-dir git+https://github.com/openai/whisper.git@v20231117
-
-# Install remaining requirements (excluding openai-whisper)
-RUN grep -v "openai-whisper" requirements.txt > requirements_temp.txt && \
-    pip install --no-cache-dir -r requirements_temp.txt && \
-    rm requirements_temp.txt
+RUN pip install --no-build-isolation openai-whisper==20231117 \
+    && grep -v '^openai-whisper==' requirements.txt > /tmp/requirements.txt \
+    && pip install -r /tmp/requirements.txt
 
 # Copy application
 COPY . .
 
-# Expose port
-EXPOSE 8001
-
 # Start command
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8001}"]
