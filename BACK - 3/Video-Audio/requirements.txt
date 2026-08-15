@@ -36,6 +36,7 @@ google-api-python-client==2.108.0
 google-auth==2.25.2
 google-auth-oauthlib==1.2.0
 google-auth-httplib2==0.2.0
+firebase-admin==6.5.0
 
 # Advanced ML Models (already have transformers)
 # transformers==4.44.2 (already included above)
