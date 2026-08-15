@@ -103,6 +103,9 @@ class FileHandler:
         Raises:
             Exception: If download fails
         """
+        if settings.download_provider.lower() == "external":
+            return await self._download_with_external_worker(url)
+
         # Platforms supported by yt-dlp
         yt_dlp_platforms = [
             'youtube.com', 'youtu.be',
@@ -142,6 +145,53 @@ class FileHandler:
                 f.write(response.content)
             
             return file_path, None
+
+    async def _download_with_external_worker(self, url: str) -> tuple[Path, dict]:
+        worker_url = (settings.download_worker_url or "").rstrip("/")
+        if not worker_url:
+            raise ValueError(
+                "DOWNLOAD_PROVIDER=external requiere configurar DOWNLOAD_WORKER_URL"
+            )
+
+        endpoint = f"{worker_url}/download"
+        headers = {}
+        if settings.download_worker_api_key:
+            headers["Authorization"] = f"Bearer {settings.download_worker_api_key}"
+
+        async with httpx.AsyncClient(timeout=float(settings.download_worker_timeout_seconds)) as client:
+            response = await client.post(endpoint, json={"url": url}, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+
+            media_url = data.get("download_url") or data.get("media_url")
+            if not media_url:
+                raise ValueError("El worker externo no devolvió `download_url`")
+
+            source_metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else None
+            return await self._download_direct_media_file(media_url, source_metadata)
+
+    async def _download_direct_media_file(self, media_url: str, source_metadata: Optional[dict] = None) -> tuple[Path, dict]:
+        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+            response = await client.get(media_url)
+            response.raise_for_status()
+
+            content_type = (response.headers.get('content-type') or '').lower()
+            if 'text/html' in content_type:
+                raise ValueError("La URL del media devolvió HTML en lugar de un archivo de video/audio")
+
+            file_extension = self._get_extension_from_url(media_url)
+            if not file_extension:
+                file_extension = self._get_extension_from_content_type(content_type)
+
+            unique_filename = f"{uuid.uuid4()}.{file_extension}"
+            file_path = self.temp_dir / unique_filename
+            with open(file_path, "wb") as f:
+                f.write(response.content)
+
+            if self.is_video_file(file_path):
+                self._validate_video_file(file_path)
+
+            return file_path, source_metadata
     
     async def _download_with_ytdlp(self, url: str) -> tuple[Path, dict]:
         """
