@@ -172,7 +172,11 @@ function App() {
             }}
           >
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              <button
+                onClick={() => setActiveView('home')}
+                className="flex items-center gap-3 text-left focus:outline-none"
+                aria-label="Ir al inicio"
+              >
                 <img src={logo} alt="AMA LLU-IA" className="w-10 h-10 rounded-lg flex-shrink-0 object-cover" />
                 <div>
                   <h1 className="text-xl font-bold tracking-tight" style={{ color: BRAND_NAVY }}>
@@ -180,8 +184,18 @@ function App() {
                   </h1>
                   <p className="text-xs font-medium text-gray-600">Verificamos. Informamos. Empoderamos.</p>
                 </div>
-              </div>
+              </button>
               <div className="flex items-center gap-2">
+                {activeView === 'verificar' && (
+                  <button
+                    onClick={() => setActiveView('home')}
+                    className="text-xs px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all hover:bg-gray-100"
+                    style={{ border: '1px solid #E9ECEF', color: '#6B7280' }}
+                  >
+                    <Home className="w-3.5 h-3.5" />
+                    Inicio
+                  </button>
+                )}
                 <span className="text-xs px-3 py-1.5 rounded-full font-medium" style={{ backgroundColor: BRAND_ORANGE + '20', color: BRAND_ORANGE }}>
                   v1.0
                 </span>
@@ -190,27 +204,29 @@ function App() {
           </div>
         </header>
 
-        {/* ===== TABS ===== */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                activeTab === tab.id
-                  ? 'text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-              style={{
-                backgroundColor: activeTab === tab.id ? BRAND_ORANGE : 'transparent',
-                border: activeTab === tab.id ? 'none' : '1px solid #E9ECEF'
-              }}
-            >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {/* ===== TABS (acceso rapido desde Home; en "verificar" ya esta la barra de tabs del panel) ===== */}
+        {activeView === 'home' && (
+          <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => { setActiveTab(tab.id); setActiveView('verificar') }}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  activeTab === tab.id
+                    ? 'text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+                style={{
+                  backgroundColor: activeTab === tab.id ? BRAND_ORANGE : 'transparent',
+                  border: activeTab === tab.id ? 'none' : '1px solid #E9ECEF'
+                }}
+              >
+                <tab.icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* ===== HOME VIEW ===== */}
         {activeView === 'home' && (
