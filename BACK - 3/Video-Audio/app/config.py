@@ -39,13 +39,21 @@ class Settings(BaseSettings):
     google_fact_check_api_key: str = ""
     
     # Speech-to-Text
-    whisper_model: str = "tiny"  # tiny, base, small, medium, large (tiny es más rápido)
+    whisper_model: str = "base"  # tiny, base, small, medium, large (base balancea velocidad/precision)
     whisper_language: str = "es"
     
     # Content Analysis
     enable_fact_checking: bool = True
     enable_fake_news_detection: bool = True
     fake_news_threshold: float = 0.7
+
+    # Groq LLM
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.3-70b-versatile"
+    
+    # Firebase Firestore
+    firebase_credentials_path: str = "./Secret/base-mediahackii-dde4ddaa87de.json"
+    firebase_project_id: str = "base-mediahackii"
     
     class Config:
         env_file = ".env"

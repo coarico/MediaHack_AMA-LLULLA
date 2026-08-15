@@ -59,10 +59,21 @@ class FactChecker:
                 'status': 'service_unavailable'
             }
         
+        # Google Fact Check API has a query length limit (~100 chars)
+        # Truncate to first 80 chars to avoid 400 errors
+        query = claim.strip()[:80]
+        if len(query) < 10:
+            return {
+                'claim': claim,
+                'fact_checks_found': 0,
+                'fact_checks': [],
+                'status': 'query_too_short'
+            }
+        
         try:
             # Search for fact-checks
             request = self.service.claims().search(
-                query=claim,
+                query=query,
                 languageCode=language,
                 pageSize=5
             )
@@ -146,8 +157,8 @@ class FactChecker:
         Returns:
             Dict with analysis results
         """
-        # Extract potential claims (simple approach)
-        sentences = [s.strip() for s in text.split('.') if len(s.strip()) > 30]
+        # Extract potential claims - short sentences only (max 80 chars for API limit)
+        sentences = [s.strip()[:80] for s in text.split('.') if 10 < len(s.strip()) <= 80]
         
         # Limit to first 3 sentences to avoid API quota
         claims_to_check = sentences[:3]

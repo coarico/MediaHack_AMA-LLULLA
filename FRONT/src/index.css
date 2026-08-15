@@ -10,12 +10,8 @@
 
 body {
   font-family: 'Space Grotesk', sans-serif;
-  background-color: #0B0E14;
-  background-image:
-    linear-gradient(rgba(0, 200, 150, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 200, 150, 0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
-  color: #E8ECF1;
+  background-color: #F4F6FA;
+  color: #111827;
   min-height: 100vh;
 }
 
@@ -23,14 +19,14 @@ body {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0B0E14;
+  background: #F4F6FA;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1E2433;
+  background: #D1D5DB;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #2A3142;
+  background: #9CA3AF;
 }
 
 @keyframes scanline {

@@ -1,10 +1,10 @@
 const API_BASE_URL = 'http://localhost:8001/api/v1';
 
-export const analyzeAudio = async (file) => {
+export const analyzeAudio = async (file, skipTranscription = false) => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(`${API_BASE_URL}/analyze/audio`, {
+  const response = await fetch(`${API_BASE_URL}/analyze/audio${skipTranscription ? '?skip_transcription=true' : ''}`, {
     method: 'POST',
     body: formData,
   });
@@ -16,11 +16,11 @@ export const analyzeAudio = async (file) => {
   return response.json();
 };
 
-export const analyzeVideo = async (file) => {
+export const analyzeVideo = async (file, skipTranscription = false) => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(`${API_BASE_URL}/analyze/video`, {
+  const response = await fetch(`${API_BASE_URL}/analyze/video${skipTranscription ? '?skip_transcription=true' : ''}`, {
     method: 'POST',
     body: formData,
   });
@@ -32,13 +32,13 @@ export const analyzeVideo = async (file) => {
   return response.json();
 };
 
-export const analyzeUrl = async (url) => {
+export const analyzeUrl = async (url, skipTranscription = false) => {
   const response = await fetch(`${API_BASE_URL}/analyze/url`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ url, skip_transcription: skipTranscription }),
   });
 
   if (!response.ok) {

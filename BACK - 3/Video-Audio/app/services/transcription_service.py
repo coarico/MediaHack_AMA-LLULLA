@@ -2,6 +2,7 @@
 Speech-to-Text service using OpenAI Whisper
 """
 import os
+import asyncio
 from typing import Dict, Optional
 from app.config import settings
 
@@ -54,9 +55,10 @@ class TranscriptionService:
         if not os.path.exists(audio_path):
             raise FileNotFoundError(f"Audio file not found: {audio_path}")
         
-        # Transcribe with Whisper
-        result = self.model.transcribe(
-            str(audio_path),  # Convert Path to string
+        # Transcribe with Whisper (run in thread to not block event loop)
+        result = await asyncio.to_thread(
+            self.model.transcribe,
+            str(audio_path),
             language=self.language,
             task="transcribe",
             verbose=False

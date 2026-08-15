@@ -200,7 +200,9 @@ class FileHandler:
                 'like_count': info.get('like_count', 0),
                 'duration': info.get('duration', 0),
                 'is_verified': info.get('channel_is_verified', False),
-                'platform': extractor
+                'platform': extractor,
+                'thumbnail': info.get('thumbnail', ''),
+                'thumbnails': info.get('thumbnails', [])
             }
             
         return Path(filename), metadata
