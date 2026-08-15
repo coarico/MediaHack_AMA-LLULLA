@@ -11,6 +11,7 @@ STOPWORDS = {
     "ante",
     "aunque",
     "cada",
+    "comercio",
     "como",
     "con",
     "contra",
@@ -45,13 +46,16 @@ STOPWORDS = {
     "del",
     "noticia",
     "noticias",
+    "publica",
+    "publico",
+    "publicos",
+    "via",
     "video",
     "audio",
 }
 
 DOMAIN_PHRASES = {
     "seguridad vial": ("seguridad", "vial"),
-    "via publica": ("via", "publica"),
     "transito": ("transito", "transito"),
     "movilidad": ("movilidad", "movilidad"),
     "inseguridad": ("inseguridad", "inseguridad"),
@@ -110,7 +114,7 @@ def merge_keywords(primary: list[str], secondary: list[str], limit: int = 12) ->
     seen: set[str] = set()
     for keyword in [*primary, *secondary]:
         key = _normalize(keyword)
-        if not key or key in seen:
+        if not key or key in seen or _is_weak_keyword(key):
             continue
         seen.add(key)
         merged.append(keyword)
@@ -141,3 +145,10 @@ def _normalize(value: str) -> str:
     clean = "".join(char for char in clean if not unicodedata.combining(char))
     clean = re.sub(r"[^\w\s/-]", " ", clean)
     return re.sub(r"\s+", " ", clean).strip()
+
+
+def _is_weak_keyword(key: str) -> bool:
+    tokens = key.split()
+    if key in STOPWORDS:
+        return True
+    return bool(tokens) and all(token in STOPWORDS for token in tokens)

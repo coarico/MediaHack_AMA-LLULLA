@@ -19,6 +19,20 @@ def test_detects_shortener_url_signal() -> None:
     assert any(signal.signal == "shortener_url" for signal in signals)
 
 
+def test_detects_redirect_to_different_domain_signal() -> None:
+    health = UrlHealth(
+        status="redirected",
+        http_status=200,
+        is_reachable=True,
+        is_disconnected=False,
+        redirect_count=1,
+    )
+
+    signals = evaluate_url_risk("https://example.com/noticia", "https://otro-dominio.com/noticia", health)
+
+    assert any(signal.signal == "redirect_to_different_domain" for signal in signals)
+
+
 def test_content_quality_flags_missing_author_and_sources() -> None:
     article = ExtractedArticle(
         url="https://example.com/noticia",

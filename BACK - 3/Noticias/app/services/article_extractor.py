@@ -14,7 +14,7 @@ class ExtractionError(RuntimeError):
 def extract_article(url: str, html_content: str) -> ExtractedArticle:
     extracted = _extract_with_trafilatura(url, html_content) or _extract_with_fallback(html_content)
     text = (extracted.get("text") or "").strip()
-    if len(text) < 300:
+    if len(text) < _minimum_text_length(url):
         raise ExtractionError("La noticia tiene muy poco contenido para analizarla bien.")
 
     parsed = urlparse(url)
@@ -28,6 +28,13 @@ def extract_article(url: str, html_content: str) -> ExtractedArticle:
         image_url=extracted.get("image"),
         text=text[: settings.max_article_chars],
     )
+
+
+def _minimum_text_length(url: str) -> int:
+    domain = (urlparse(url).hostname or "").lower()
+    if any(social in domain for social in ("instagram.com", "facebook.com", "x.com", "twitter.com", "tiktok.com", "threads.net")):
+        return 80
+    return 300
 
 
 def _extract_with_trafilatura(url: str, html_content: str) -> dict | None:

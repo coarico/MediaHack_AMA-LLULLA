@@ -2,6 +2,7 @@ import re
 from urllib.parse import urlparse
 
 from app.schemas.news import ContentAttribution, ExtractedArticle, SourceClassification
+from app.services.source_classifier import find_registered_source
 
 
 MEDIA_HANDLE_HINTS = (
@@ -32,8 +33,15 @@ def build_content_attribution(
     if not shared_by and platform_type == "red_social":
         shared_by = _extract_handle_from_text(article.text)
 
-    publisher_type = _publisher_type_from_handle(shared_by, source_classification)
-    publisher_name = _display_name_from_handle(shared_by) if shared_by else source_classification.source_name
+    registry_match = find_registered_source(handle=shared_by) if shared_by else None
+    publisher_type = _publisher_type_from_handle(shared_by, source_classification, registry_match)
+    publisher_name = (
+        registry_match.get("name")
+        if registry_match
+        else _display_name_from_handle(shared_by)
+        if shared_by
+        else source_classification.source_name
+    )
 
     if platform_type == "red_social":
         explanation = (
@@ -79,11 +87,29 @@ def _extract_social_handle(path: str) -> str | None:
 
 
 def _extract_handle_from_text(text: str) -> str | None:
-    match = re.search(r"\b([A-Za-z0-9._]{3,40})\s+•", text)
-    return match.group(1) if match else None
+    patterns = [
+        r"\b([A-Za-z0-9._]{3,40})\s+(?:â€¢|•|·)",
+        r"\b([A-Za-z0-9._]{3,40})\s+(?:\d+\s*(?:s|m|h|d|w|y|a)\b|\d+\s*(?:dia|dias|hora|horas|semana|semanas))",
+    ]
+    ignored = {"instagram", "facebook", "follow", "login", "signup", "close", "options"}
+    for pattern in patterns:
+        for match in re.finditer(pattern, text, flags=re.IGNORECASE):
+            handle = match.group(1).strip()
+            if handle.lower() not in ignored:
+                return handle
+    return None
 
 
-def _publisher_type_from_handle(handle: str | None, source_classification: SourceClassification):
+def _publisher_type_from_handle(
+    handle: str | None,
+    source_classification: SourceClassification,
+    registry_match: dict[str, str] | None = None,
+):
+    if registry_match:
+        publisher_type = registry_match.get("publisher_type") or "medio_comunicacion"
+        if publisher_type in {"medio_digital", "medio_tradicional"}:
+            return "medio_comunicacion"
+        return publisher_type
     if source_classification.communication_type != "red_social":
         if source_classification.communication_type in {"medio_radar", "medio_no_radar"}:
             return "medio_comunicacion"

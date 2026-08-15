@@ -28,5 +28,6 @@ def test_classifies_social_media(monkeypatch) -> None:
 def test_classifies_registered_el_comercio_as_media() -> None:
     result = classify_source("https://www.elcomercio.com/actualidad/quito/noticia.html", "www.elcomercio.com")
 
-    assert result.communication_type == "medio_no_radar"
+    assert result.is_radar_media is True
+    assert result.communication_type == "medio_radar"
     assert result.source_name == "El Comercio"

@@ -147,6 +147,30 @@ def _match_source_registry(domain: str, handle: str | None = None) -> dict[str, 
     return None
 
 
+def find_registered_source(source_domain: str = "", handle: str | None = None) -> dict[str, str] | None:
+    return _match_source_registry(_normalize_domain(source_domain), _normalize_handle(handle) or None)
+
+
+def list_registered_sources_for_search(limit: int | None = None) -> list[dict[str, str]]:
+    priority = {
+        "medio_verificacion": 0,
+        "medio_comunicacion_sitio_web": 1,
+        "medio_nativo_digital": 2,
+        "medio_digital_alineado_gobierno": 3,
+        "democratizacion_informacion": 4,
+    }
+    sources = sorted(
+        _load_source_registry(),
+        key=lambda item: (
+            priority.get(item.get("category") or "", 9),
+            item.get("name") or "",
+        ),
+    )
+    if limit is not None:
+        return sources[:limit]
+    return sources
+
+
 def _classify_non_radar(domain: str) -> tuple[str, float, str]:
     if _domain_matches(domain, SOCIAL_DOMAINS):
         return "red_social", 0.95, "El dominio pertenece a una red social."

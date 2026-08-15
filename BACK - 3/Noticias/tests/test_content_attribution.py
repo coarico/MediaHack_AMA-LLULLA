@@ -20,4 +20,5 @@ def test_instagram_attribution_detects_media_account_from_text() -> None:
 
     assert attribution.platform_name == "Instagram"
     assert attribution.shared_by_account == "radiocentro.ec"
+    assert attribution.publisher_name == "Radio Centro"
     assert attribution.publisher_type == "medio_comunicacion"

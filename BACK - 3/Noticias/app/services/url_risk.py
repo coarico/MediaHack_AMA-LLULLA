@@ -41,6 +41,16 @@ def evaluate_url_risk(original_url: str, final_url: str, url_health: UrlHealth) 
             )
         )
 
+    if original_domain and domain and original_domain != domain:
+        severity = "baja" if url_health.redirect_count <= 1 else "media"
+        signals.append(
+            UrlRiskSignal(
+                signal="redirect_to_different_domain",
+                severity=severity,
+                explanation="La URL termina en un dominio distinto al dominio original.",
+            )
+        )
+
     if url_health.is_disconnected:
         signals.append(
             UrlRiskSignal(
@@ -79,4 +89,3 @@ def evaluate_url_risk(original_url: str, final_url: str, url_health: UrlHealth) 
         )
 
     return signals
-

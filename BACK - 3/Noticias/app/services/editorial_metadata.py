@@ -1,3 +1,6 @@
+import re
+from datetime import datetime, timedelta, timezone
+
 from app.schemas.news import AnalyzeRequest, ContentAttribution, EditorialMetadata, ExtractedArticle, NewsAnalysis, SourceClassification
 
 
@@ -32,9 +35,16 @@ def build_editorial_metadata(
     if not request.publisher_type:
         notes.append("Quien publica fue inferido desde la clasificacion de fuente.")
 
-    publication_date = request.publication_date or article.published_at
+    social_publication_date = (
+        _extract_social_publication_date(article.text)
+        if content_attribution and content_attribution.platform_type == "red_social"
+        else None
+    )
+    publication_date = request.publication_date or article.published_at or social_publication_date
     if not request.publication_date and article.published_at:
         notes.append("Fecha tomada de la metadata extraida del articulo.")
+    elif not request.publication_date and social_publication_date:
+        notes.append("Fecha aproximada inferida desde marca temporal de red social.")
     elif not publication_date:
         notes.append("No se detecto fecha de publicacion.")
 
@@ -105,3 +115,30 @@ def _thematic_tags(analysis: NewsAnalysis) -> list[str]:
         if tag in text or (tag == "narcotrafico" and "narcotráfico" in text):
             tags.append(tag)
     return tags
+
+
+def _extract_social_publication_date(text: str) -> str | None:
+    match = re.search(
+        r"\b(?P<amount>\d{1,3})\s*(?P<unit>s|m|h|d|w|y|a|dia|dias|hora|horas|semana|semanas)\b",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return None
+
+    amount = int(match.group("amount"))
+    unit = match.group("unit").lower()
+    if unit == "s":
+        delta = timedelta(seconds=amount)
+    elif unit == "m":
+        delta = timedelta(minutes=amount)
+    elif unit in {"h", "hora", "horas"}:
+        delta = timedelta(hours=amount)
+    elif unit in {"d", "dia", "dias"}:
+        delta = timedelta(days=amount)
+    elif unit in {"w", "semana", "semanas"}:
+        delta = timedelta(weeks=amount)
+    else:
+        delta = timedelta(days=365 * amount)
+
+    return (datetime.now(timezone.utc) - delta).isoformat()

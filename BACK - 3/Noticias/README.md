@@ -8,7 +8,7 @@ Backend para analizar noticias mediante un link, generar palabras clave y buscar
 - Firebase Admin SDK + Firestore
 - Trafilatura para extraccion de articulos
 - OpenAI Structured Outputs para analisis profundo
-- Google Custom Search para noticias relacionadas
+- GDELT + DuckDuckGo para noticias relacionadas gratuitas
 
 ## Instalacion
 
@@ -24,7 +24,7 @@ Configura `.env` con las claves disponibles. El servicio puede correr sin claves
 
 - sin `OPENAI_API_KEY` usa analisis heuristico local
 - sin Firebase guarda solo en memoria
-- sin Google Search no devuelve noticias relacionadas
+- GDELT no requiere API key; si no encuentra resultados, usa DuckDuckGo como respaldo
 
 ## Ejecutar
 

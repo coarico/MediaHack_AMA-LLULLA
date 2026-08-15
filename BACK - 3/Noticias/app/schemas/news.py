@@ -116,10 +116,50 @@ class UrlTrustAssessment(BaseModel):
     scope: Literal["url_only"] = "url_only"
 
 
+class UrlContentClassification(BaseModel):
+    is_news: bool
+    content_kind: Literal[
+        "noticia",
+        "publicacion_red_social",
+        "video_audio",
+        "otro",
+        "indeterminado",
+    ]
+    confidence: int = Field(ge=0, le=100)
+    reasons: list[str] = Field(default_factory=list)
+
+
+class NewsReliabilityAssessment(BaseModel):
+    score: int = Field(ge=0, le=100)
+    level: Literal["alta", "media", "baja", "indeterminada"]
+    is_reliable_source_context: bool
+    explanation: str
+    factors: list[str] = Field(default_factory=list)
+    scope: Literal["fuente_contenido_cobertura"] = "fuente_contenido_cobertura"
+
+
 class UrlRiskSignal(BaseModel):
     signal: str
     severity: Literal["baja", "media", "alta"]
     explanation: str
+
+
+class UrlTechnicalReport(BaseModel):
+    original_domain: str | None = None
+    final_domain: str | None = None
+    uses_https: bool
+    redirected_to_different_domain: bool = False
+    redirect_count: int = 0
+    http_status: int | None = None
+    is_reachable: bool
+    is_registered_source: bool
+    source_name: str | None = None
+    content_kind: str
+    risk_signal_count: int = 0
+    high_or_medium_risk_count: int = 0
+    operational_status: Literal["confiable", "precaucion", "requiere_revision", "indeterminado"]
+    summary: str
+    recommendations: list[str] = Field(default_factory=list)
 
 
 class ExtractedArticle(BaseModel):
@@ -220,6 +260,9 @@ class RelatedNewsItem(BaseModel):
     source_type: str | None = None
     source_registry_status: str | None = None
     source_confidence_score: int | None = Field(default=None, ge=0, le=100)
+    source_veracity_score: int | None = Field(default=None, ge=0, le=100)
+    relation_score: int | None = Field(default=None, ge=0, le=100)
+    relation_label: str | None = None
     snippet: str | None = None
     published_at: str | None = None
     relation_reason: str | None = None
@@ -242,6 +285,26 @@ class VerifiableClaim(BaseModel):
     needs_external_verification: bool = True
 
 
+class LlmCompactContext(BaseModel):
+    title: str | None = None
+    source_domain: str | None = None
+    published_at: str | None = None
+    keywords: list[str] = Field(default_factory=list)
+    top_sentences: list[str] = Field(default_factory=list)
+    candidate_claims: list[str] = Field(default_factory=list)
+    original_text_chars: int = 0
+    compact_text_chars: int = 0
+    estimated_tokens: int = 0
+    compression_ratio: float = Field(ge=0, le=1)
+
+
+class LlmExecutionMetadata(BaseModel):
+    provider: Literal["groq", "openai", "heuristic"]
+    model: str | None = None
+    status: Literal["used", "fallback", "disabled", "failed"]
+    error: str | None = None
+
+
 class ClaimContrast(BaseModel):
     timestamp: str | None = None
     claim: str
@@ -256,6 +319,36 @@ class ClaimContrast(BaseModel):
     explanation: str
     sources_consulted: list[str] = Field(default_factory=list)
     evidence_url: str | None = None
+
+
+class GenderImpactSignal(BaseModel):
+    signal_type: Literal[
+        "estereotipos_genero",
+        "descalificacion_genero",
+        "sexualizacion",
+        "roles_familiares",
+        "lenguaje_degradante",
+        "amenazas_intimidacion",
+        "contenido_manipulado",
+        "hostigamiento_reiterado",
+    ]
+    label: str
+    evidence: str
+    severity: Literal["baja", "media", "alta"]
+
+
+class GenderImpactAssessment(BaseModel):
+    status: Literal[
+        "sin_senales_relevantes",
+        "senales_para_revision",
+        "alerta_impacto_genero",
+    ]
+    status_label: str
+    score: int = Field(ge=0, le=100)
+    signals: list[GenderImpactSignal] = Field(default_factory=list)
+    explanation: str
+    requires_specialized_review: bool = False
+    scope: Literal["contenido"] = "contenido"
 
 
 class CrossSourceCheck(BaseModel):
@@ -301,7 +394,7 @@ class AnalyzeResponse(BaseModel):
     module: Literal["noticias"] = "noticias"
     content_type: Literal["news_url"] = "news_url"
     visibility: Literal["private", "public", "internal"] = "private"
-    status: Literal["completed", "failed"]
+    status: Literal["processing", "completed", "failed"]
     created_at: datetime
     updated_at: datetime
     source_input: SourceInput
@@ -311,13 +404,19 @@ class AnalyzeResponse(BaseModel):
     information_relevance: InformationRelevance
     url_health: UrlHealth
     url_trust_assessment: UrlTrustAssessment
+    url_content_classification: UrlContentClassification
+    news_reliability_assessment: NewsReliabilityAssessment
+    url_technical_report: UrlTechnicalReport
     url_risk_signals: list[UrlRiskSignal] = Field(default_factory=list)
     article: ExtractedArticle
     content_quality: ContentQuality
     source_classification: SourceClassification
     analysis: NewsAnalysis
+    llm_compact_context: LlmCompactContext
+    llm_execution: LlmExecutionMetadata
     verifiable_claims: list[VerifiableClaim] = Field(default_factory=list)
     claim_contrasts: list[ClaimContrast] = Field(default_factory=list)
+    gender_impact_assessment: GenderImpactAssessment
     cross_source_check: CrossSourceCheck
     risk_assessment: RiskAssessment
     audit: AuditMetadata

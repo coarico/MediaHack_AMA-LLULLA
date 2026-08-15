@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+﻿import { useState, useRef, useEffect } from 'react'
 import { MessageCircle, X, Send, Link as LinkIcon, Upload, ClipboardList, Search, AlertTriangle, CheckCircle2, XCircle, Activity, Info, TrendingUp, BookOpen, Home, Landmark, Scale, Users, ArrowRight } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
-import { analyzeUrl, analyzeAudio, analyzeVideo } from './services/api'
+import { analyzeNewsUrl, getNewsAnalysis, analyzeMediaUrl, analyzeAudio, analyzeVideo } from './services/api'
 import logo from './assets/logo.jpeg'
 
 // Paleta de marca (del logo AMA-LLU-IA)
@@ -25,6 +25,7 @@ function App() {
   const [inputMessage, setInputMessage] = useState('')
   const chatEndRef = useRef(null)
   const fileInputRef = useRef(null)
+  const pollingRef = useRef(null)
 
   const HISTORY_KEY = 'ama_llu_ia_history'
   const [history, setHistory] = useState(() => {
@@ -52,6 +53,10 @@ function App() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  useEffect(() => () => {
+    if (pollingRef.current) clearInterval(pollingRef.current)
+  }, [])
+
   const criterios = [
     { title: 'Fuente verificada', desc: 'Origen y autoría del contenido' },
     { title: 'Coherencia del contenido', desc: 'Consistencia interna y contextual' },
@@ -71,16 +76,87 @@ function App() {
   ] : []
   const recentHistory = history.slice(0, 5)
 
+  const adaptNewsAnalysisResult = (result) => {
+    const score = (result.news_reliability_assessment?.score ?? result.analysis?.credibility?.score ?? 0) / 100
+    const related = result.related_news || []
+    const sourceName = result.source_verification?.source_name || result.content_attribution?.publisher_name || result.article?.source_domain
+    return {
+      module: 'noticias',
+      raw_news: result,
+      is_ai_generated: false,
+      is_misinformation: result.risk_assessment?.level === 'alto' || result.risk_assessment?.level === 'critico',
+      confidence: Math.max(0, Math.min(1, score)),
+      processing_time: null,
+      metadata: {
+        format: 'URL noticia',
+        duration: null,
+        source_metadata: {
+          title: result.article?.title || result.analysis?.topic || 'Noticia analizada',
+          channel: sourceName || 'Sin fuente',
+          platform: result.editorial_metadata?.platform || 'sitio_web',
+          source_url: result.source_input?.final_url || result.source_input?.original_url,
+          upload_date: result.editorial_metadata?.publication_date,
+          is_verified: ['radar_media', 'registered_media', 'ifcn_verified'].includes(result.source_verification?.status),
+          view_count: 0,
+          duration: 0,
+        }
+      },
+      content_analysis: {
+        has_transcription: false,
+        transcription: {
+          text: result.analysis?.summary || '',
+          segments: [],
+          segment_verifications: [],
+        },
+        fact_checking: {
+          fact_checks_found: related.length,
+          fact_checks: related.map(item => ({
+            title: item.title,
+            publisher: item.source_name || item.source || 'Fuente',
+            rating: item.source_registry_status || 'relacionada',
+          })),
+        },
+      },
+    }
+  }
+
+  const pollNewsAnalysis = (analysisId) => {
+    if (pollingRef.current) clearInterval(pollingRef.current)
+    let attempts = 0
+    pollingRef.current = setInterval(async () => {
+      attempts += 1
+      try {
+        const updated = await getNewsAnalysis(analysisId)
+        setAnalysisResult(adaptNewsAnalysisResult(updated))
+        if (updated.status !== 'processing' || attempts >= 20) {
+          clearInterval(pollingRef.current)
+          pollingRef.current = null
+        }
+      } catch {
+        if (attempts >= 3) {
+          clearInterval(pollingRef.current)
+          pollingRef.current = null
+        }
+      }
+    }, 2500)
+  }
+
   const handleAnalyze = async () => {
     setAnalyzing(true)
     setError(null)
     setAnalysisResult(null)
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current)
+      pollingRef.current = null
+    }
 
     try {
       let result
       
       if (activeTab === 'link' && urlValue) {
-        result = await analyzeUrl(urlValue)
+        const newsResponse = await analyzeNewsUrl(urlValue)
+        result = adaptNewsAnalysisResult(newsResponse)
+        if (newsResponse.status === 'processing') pollNewsAnalysis(newsResponse.id)
       } else if (activeTab === 'video' && selectedFile) {
         const fileType = selectedFile.type
         if (fileType.startsWith('audio/')) {
@@ -92,7 +168,7 @@ function App() {
         }
       } else if (activeTab === 'video' && videoUrl) {
         // Usar videoUrl si no hay archivo seleccionado
-        result = await analyzeUrl(videoUrl)
+        result = await analyzeMediaUrl(videoUrl)
       } else {
         throw new Error('Por favor ingresa una URL o selecciona un archivo')
       }
@@ -157,6 +233,258 @@ function App() {
     if (status === 'verificado') return CheckCircle2
     if (status === 'dudoso') return AlertTriangle
     return XCircle
+  }
+
+  const NewsResultPanel = ({ result }) => {
+    if (!result) return null
+
+    const score = result.news_reliability_assessment?.score ?? result.analysis?.credibility?.score ?? 0
+    const risk = result.risk_assessment?.level || 'sin dato'
+    const article = result.article || {}
+    const editorial = result.editorial_metadata || {}
+    const source = result.source_verification || {}
+    const urlCheck = result.url_verification || {}
+    const gender = result.gender_impact_assessment || {}
+    const related = result.related_news || []
+    const keywords = result.analysis?.keywords || article.keywords || []
+    const reviewBlock = (result.audit?.presentation_blocks || []).find(block => block.title === 'Recomendaciones para revisar')
+    const summary = result.analysis?.summary || article.description || 'Sin resumen disponible.'
+    const isElectoral = Boolean(result.electoral_relevance?.is_electoral || result.analysis?.is_electoral)
+    const safeScore = Math.max(0, Math.min(100, Number(score) || 0))
+    const confidenceData = [
+      { name: 'Confiabilidad', value: safeScore, color: safeScore >= 80 ? '#00C896' : safeScore >= 60 ? '#E8A33D' : '#E85D5D' },
+      { name: 'Pendiente', value: Math.max(0, 100 - safeScore), color: '#E9ECEF' },
+    ]
+    const riskColor = risk === 'bajo' ? '#00C896' : risk === 'medio' ? '#E8A33D' : '#E85D5D'
+    const sourceLabel = source.source_name || editorial.publisher_name || article.source_domain || 'Sin fuente'
+    const publisherType = editorial.publisher_type || source.source_type || 'sin clasificar'
+    const contentType = result.content_classification?.type || urlCheck.content_type || 'sin dato'
+    const genderState = gender.status || gender.level || 'sin dato'
+    const llm = result.llm_execution || {}
+    const llmStatus = llm.status === 'used' ? 'LLM usado' : llm.status === 'fallback' ? 'Fallback local' : 'IA no usada'
+    const humanContentType = contentType === 'noticia' ? 'Noticia' : contentType === 'social_post' ? 'Publicacion social' : 'Contenido por revisar'
+    const humanPublisherType = publisherType === 'medio_comunicacion' ? 'Medio de comunicacion' : publisherType === 'usuario_cuenta_personal' ? 'Cuenta personal' : publisherType.replaceAll('_', ' ')
+    const humanSourceStatus = source.status === 'radar_media' ? 'Medio en radar' : source.status === 'registered_media' ? 'Medio registrado' : source.status === 'ifcn_verified' ? 'Verificador IFCN' : 'Fuente sin registro'
+    const humanGenderState = genderState === 'sin_senales_relevantes' ? 'Sin senales relevantes' : genderState === 'senales_para_revision' ? 'Senales para revision' : genderState === 'alerta_impacto_genero' ? 'Alerta de impacto de genero' : 'Sin dato'
+    const rawPublicationDate = editorial.publication_date || article.published_at
+    const dateLabel = rawPublicationDate
+      ? new Intl.DateTimeFormat('es-EC', {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+          timeZone: 'America/Guayaquil',
+        }).format(new Date(rawPublicationDate))
+      : 'Fecha de la noticia no detectada'
+    const isUpdatingRelated = result.status === 'processing'
+    const confidenceCaption = isUpdatingRelated
+      ? 'Actualizando con cobertura relacionada'
+      : related.length > 0
+        ? 'Calculada con fuente, URL y contraste'
+        : 'Calculada con fuente y contenido disponible'
+    const renderActionItem = (item) => {
+      if (typeof item === 'string') {
+        return { title: item, detail: null, reason: null, priority: null }
+      }
+      if (!item || typeof item !== 'object') {
+        return { title: String(item), detail: null, reason: null, priority: null }
+      }
+      return {
+        title: item.title || item.missing_item || item.label || 'Informacion por revisar',
+        detail: item.action || item.suggested_verification || item.description || item.value || item.recommendation || null,
+        reason: item.reason || item.why_it_matters || null,
+        priority: item.priority || item.severity || null,
+      }
+    }
+    const actionItems = Array.isArray(reviewBlock?.items) ? reviewBlock.items : []
+
+    return (
+      <div className="mt-6 rounded-xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E9ECEF' }}>
+        <div className="grid lg:grid-cols-[1.55fr_0.45fr]">
+          <section className="p-5 md:p-6 space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ backgroundColor: '#F5822B18', color: BRAND_ORANGE }}>
+                  {humanContentType}
+                </span>
+                <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ backgroundColor: isElectoral ? '#00C89618' : '#E9ECEF', color: isElectoral ? '#008F6A' : '#6B7280' }}>
+                  {isElectoral ? 'Electoral' : 'No electoral'}
+                </span>
+                <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ backgroundColor: riskColor + '18', color: riskColor }}>
+                  Riesgo {risk}
+                </span>
+                {isUpdatingRelated && (
+                  <span className="text-xs px-2.5 py-1 rounded-full font-semibold flex items-center gap-1" style={{ backgroundColor: '#3B82F618', color: '#2563EB' }}>
+                    <Activity className="w-3 h-3 animate-spin" />
+                    Consultando relacionadas
+                  </span>
+                )}
+              </div>
+              <h3 className="text-xl md:text-2xl font-bold leading-tight" style={{ color: BRAND_NAVY }}>
+                {article.title || result.analysis?.topic || 'Resultado del analisis'}
+              </h3>
+              <p className="text-sm leading-relaxed text-gray-700">{summary}</p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-3 rounded-lg p-3" style={{ backgroundColor: '#F8F9FA' }}>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Fuente</p>
+                <p className="text-sm font-semibold text-gray-900 mt-1">{sourceLabel}</p>
+                <p className="text-xs text-gray-600">{humanPublisherType}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Fecha de la noticia</p>
+                <p className="text-sm font-semibold text-gray-900 mt-1">{dateLabel}</p>
+                <p className="text-xs text-gray-600">{editorial.platform === 'sitio_web' ? 'Sitio web' : editorial.platform || 'Sitio web'}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Registro</p>
+                <p className="text-sm font-semibold text-gray-900 mt-1">{humanSourceStatus}</p>
+                <p className="text-xs text-gray-600">{urlCheck.final_domain || article.source_domain || 'Dominio no detectado'}</p>
+              </div>
+            </div>
+
+            {keywords.length > 0 && (
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-2">Palabras clave</p>
+                <div className="flex flex-wrap gap-2">
+                  {keywords.slice(0, 12).map((keyword, idx) => (
+                    <span key={`${keyword}-${idx}`} className="text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: '#F8F9FA', color: '#374151', border: '1px solid #E9ECEF' }}>
+                      {keyword}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="rounded-lg p-4" style={{ backgroundColor: '#F8F9FA' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <Info className="w-4 h-4" style={{ color: BRAND_ORANGE }} />
+                <h4 className="text-sm font-bold text-gray-900">Recomendaciones para revisar</h4>
+              </div>
+              {actionItems.length > 0 ? (
+                <ul className="space-y-2">
+                  {actionItems.map((item, idx) => {
+                    const formatted = renderActionItem(item)
+                    return (
+                      <li key={idx} className="flex gap-2 text-sm text-gray-700">
+                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: BRAND_ORANGE }} />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-gray-900">{formatted.title}</span>
+                            {formatted.priority && (
+                              <span className="text-[11px] px-1.5 py-0.5 rounded uppercase tracking-wide" style={{ backgroundColor: '#F5822B18', color: BRAND_ORANGE }}>
+                                Prioridad {formatted.priority}
+                              </span>
+                            )}
+                          </div>
+                          {formatted.detail && <p className="mt-1 text-gray-700">{formatted.detail}</p>}
+                          {formatted.reason && <p className="mt-1 text-xs text-gray-500">{formatted.reason}</p>}
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              ) : (
+                <p className="text-sm text-gray-700">No se detectaron recomendaciones especificas para esta noticia con la informacion disponible.</p>
+              )}
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <h4 className="text-sm font-bold text-gray-900">Noticias relacionadas</h4>
+                <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: '#16234E10', color: BRAND_NAVY }}>
+                  {isUpdatingRelated ? 'Consultando base de datos' : `${related.length} encontradas`}
+                </span>
+              </div>
+              {isUpdatingRelated && (
+                <div className="rounded-lg border p-3 mb-3 flex items-start gap-2" style={{ backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }}>
+                  <Activity className="w-4 h-4 animate-spin mt-0.5 flex-shrink-0" style={{ color: '#2563EB' }} />
+                  <p className="text-xs leading-relaxed" style={{ color: '#1D4ED8' }}>
+                    Consultando en la base de datos y contrastando fuentes relacionadas. La confiabilidad puede actualizarse cuando aparezcan coincidencias relevantes.
+                  </p>
+                </div>
+              )}
+              {related.length > 0 ? (
+                <div className="space-y-2">
+                  {related.slice(0, 5).map((item, idx) => (
+                    <a
+                      key={`${item.url || item.title}-${idx}`}
+                      href={item.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block rounded-lg border p-3 transition-colors hover:bg-gray-50"
+                      style={{ borderColor: '#E9ECEF' }}
+                    >
+                      <p className="text-sm font-semibold text-gray-900">{item.title}</p>
+                      <div className="mt-1 flex flex-wrap gap-2 text-xs text-gray-600">
+                        <span>{item.source_name || item.source || 'Fuente'}</span>
+                        {item.relation_score != null && (
+                          <span>Relacion {item.relation_score}%</span>
+                        )}
+                        {(item.source_veracity_score ?? item.source_confidence_score ?? item.confidence) != null && (
+                          <span>Medio {item.source_veracity_score ?? item.source_confidence_score ?? item.confidence}%</span>
+                        )}
+                        <span>{item.source_type === 'medio_radar' ? 'Medio en radar' : item.source_type === 'medio_no_radar' ? 'Medio registrado' : item.source_category || 'Otra fuente'}</span>
+                      </div>
+                      {item.relation_label && (
+                        <p className="mt-2 text-xs text-gray-500">Relacion con la noticia principal: {item.relation_label}.</p>
+                      )}
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-600">No se encontraron coberturas relacionadas para este contexto.</p>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('auditor')}
+              className="w-full px-4 py-3 rounded-lg font-semibold text-sm flex items-center justify-center gap-2"
+              style={{ backgroundColor: BRAND_NAVY, color: '#FFFFFF' }}
+            >
+              Ir a auditoria
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </section>
+
+          <aside className="p-5 md:p-6 border-t lg:border-t-0 lg:border-l space-y-5" style={{ borderColor: '#E9ECEF', backgroundColor: '#F8F9FA' }}>
+            <div className="h-44 relative">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={confidenceData} dataKey="value" innerRadius={48} outerRadius={68} startAngle={90} endAngle={450}>
+                    {confidenceData.map((entry) => <Cell key={entry.name} fill={entry.color} />)}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <div className="text-3xl font-bold font-mono" style={{ color: safeScore >= 80 ? '#00C896' : safeScore >= 60 ? '#E8A33D' : '#E85D5D' }}>{safeScore}%</div>
+                <div className="text-xs text-gray-500">Confiabilidad</div>
+              </div>
+            </div>
+            <p className="text-xs leading-relaxed text-center text-gray-600 -mt-2">{confidenceCaption}</p>
+
+            <div className="space-y-3">
+              <div className="rounded-lg bg-white border p-3" style={{ borderColor: '#E9ECEF' }}>
+                <p className="text-xs text-gray-500">Fuente</p>
+                <p className="text-sm font-semibold text-gray-900">{humanSourceStatus}</p>
+              </div>
+              <div className="rounded-lg bg-white border p-3" style={{ borderColor: '#E9ECEF' }}>
+                <p className="text-xs text-gray-500">Impacto de genero</p>
+                <p className="text-sm font-semibold text-gray-900">{humanGenderState}</p>
+                {Array.isArray(gender.signals) && gender.signals.length > 0 && (
+                  <p className="text-xs text-gray-600 mt-1">{gender.signals.slice(0, 3).join(', ')}</p>
+                )}
+              </div>
+              <div className="rounded-lg bg-white border p-3" style={{ borderColor: '#E9ECEF' }}>
+                <p className="text-xs text-gray-500">Analisis IA</p>
+                <p className="text-sm font-semibold text-gray-900">{llm.status === 'used' ? 'Analisis aplicado' : llmStatus}</p>
+                <p className="text-xs text-gray-600 mt-1">Las recomendaciones de revision estan en el panel principal.</p>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -258,7 +586,7 @@ function App() {
                   <p className="text-sm leading-relaxed text-gray-600">
                     En época de elecciones, la información circula más rápido de lo que se puede verificar.
                     Esta herramienta analiza noticias, videos y audios para ayudarte a identificar señales de
-                    manipulación o desinformación electoral — pero no decide por ti: te da elementos objetivos
+                    manipulación o desinformación electoral - pero no decide por ti: te da elementos objetivos
                     para que <strong>tú corrobores y decidas</strong> qué creer y qué compartir.
                   </p>
                   <button
@@ -643,7 +971,7 @@ function App() {
                       className="w-full text-center text-xs font-medium py-2 mt-1"
                       style={{ color: BRAND_ORANGE }}
                     >
-                      Ver historial completo en Auditor →
+                      Ver historial completo en Auditor
                     </button>
                   </div>
                 )}
@@ -743,6 +1071,17 @@ function App() {
                       </>
                     )}
                   </button>
+                  {analysisResult?.module === 'noticias' && (
+                    <NewsResultPanel result={analysisResult.raw_news} />
+                  )}
+                  {error && (
+                    <div className="mt-4 rounded-lg border p-4" style={{ backgroundColor: '#FEF2F2', borderColor: '#E85D5D' }}>
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#E85D5D' }} />
+                        <p className="text-xs" style={{ color: '#E85D5D' }}>{error}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -829,7 +1168,7 @@ function App() {
                   </button>
 
                   {/* Resultados del análisis */}
-                  {analysisResult && (() => {
+                  {analysisResult && analysisResult.module !== 'noticias' && (() => {
                     const sm = analysisResult.metadata?.source_metadata
                     const segVs = analysisResult.content_analysis?.transcription?.segment_verifications || []
                     const segs = analysisResult.content_analysis?.transcription?.segments || []
@@ -846,10 +1185,10 @@ function App() {
                     // Platform config
                     const platformConfig = {
                       'YouTube': { color: '#FF0000', bg: '#FF0000', icon: '▶', label: 'YouTube' },
-                      'Instagram': { color: '#E1306C', bg: '#E1306C', icon: '📷', label: 'Instagram' },
-                      'TikTok': { color: '#00F2EA', bg: '#000000', icon: '🎵', label: 'TikTok' },
+                      'Instagram': { color: '#E1306C', bg: '#E1306C', icon: 'IG', label: 'Instagram' },
+                      'TikTok': { color: '#00F2EA', bg: '#000000', icon: 'TT', label: 'TikTok' },
                       'Facebook': { color: '#1877F2', bg: '#1877F2', icon: 'f', label: 'Facebook' },
-                      'Twitter': { color: '#1DA1F2', bg: '#1DA1F2', icon: '𝕏', label: 'Twitter/X' },
+                      'Twitter': { color: '#1DA1F2', bg: '#1DA1F2', icon: 'X', label: 'Twitter/X' },
                       'Generic': { color: '#7A8290', bg: '#7A8290', icon: '▶', label: sm?.platform || 'Video' },
                     }
                     const pc = platformConfig[sm?.platform] || platformConfig['Generic']
@@ -1014,7 +1353,7 @@ function App() {
                         </div>
                       )}
 
-                      {/* ===== TRANSCRIPCIÓN + VERIFICACIÓN ===== */}
+                      {/* ===== TRANSCRIPCION + VERIFICACION ===== */}
                       {analysisResult.content_analysis?.has_transcription && analysisResult.content_analysis?.transcription?.text && (
                         <div className="rounded-xl border p-5" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
                           <div className="flex items-center gap-2 mb-4">
@@ -1044,7 +1383,7 @@ function App() {
                                       <span className="text-xs px-2 py-0.5 rounded font-bold" style={{
                                         backgroundColor: color + '20', color: color, border: `1px solid ${color}40`
                                       }}>{seg.label}</span>
-                                      {seg.source !== 'N/A' && <span className="text-xs text-gray-600">↔ {seg.source}</span>}
+                                      {seg.source !== 'N/A' && <span className="text-xs text-gray-600">Fuente: {seg.source}</span>}
                                       {seg.fact_checks_found > 0 && <span className="text-xs text-gray-600">({seg.fact_checks_found} verif.)</span>}
                                     </div>
                                   </div>
@@ -1091,7 +1430,7 @@ function App() {
                                 <div key={idx} className="rounded-lg p-3" style={{ backgroundColor: '#FFFFFF' }}>
                                   <p className="text-sm font-medium mb-2 text-gray-900">{fc.title}</p>
                                   <div className="flex items-center gap-3 flex-wrap">
-                                    <span className="text-xs text-gray-600">📰 {fc.publisher}</span>
+                                    <span className="text-xs text-gray-600">{fc.publisher}</span>
                                     <span className="text-xs px-2 py-0.5 rounded font-semibold" style={{ backgroundColor: ratingColor + '20', color: ratingColor }}>
                                       {fc.rating}
                                     </span>
@@ -1103,7 +1442,7 @@ function App() {
                         </div>
                       )}
 
-                      {/* ===== INFO TÉCNICA ===== */}
+                      {/* ===== INFO TECNICA ===== */}
                       <div className="rounded-xl border p-4" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
                         <div className="flex items-center gap-2 mb-3">
                           <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#9CA3AF' }} />
@@ -1296,7 +1635,7 @@ function App() {
                 animation: 'pulse-dot 2s ease-in-out infinite'
               }}
             />
-            <h3 className="font-semibold text-sm text-white">Bot — preguntas ciudadanas</h3>
+            <h3 className="font-semibold text-sm text-white">Bot - preguntas ciudadanas</h3>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -1354,3 +1693,4 @@ function App() {
 }
 
 export default App
+

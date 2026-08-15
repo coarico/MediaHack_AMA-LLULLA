@@ -5,7 +5,8 @@ def test_classifies_registered_web_media():
     result = classify_source("https://www.primicias.ec/noticias/politica/demo")
 
     assert result.source_name == "Primicias"
-    assert result.communication_type == "medio_no_radar"
+    assert result.is_radar_media is True
+    assert result.communication_type == "medio_radar"
     assert result.registry_category == "medio_comunicacion_sitio_web"
     assert result.platform == "sitio_web"
 
