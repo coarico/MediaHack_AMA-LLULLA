@@ -965,6 +965,28 @@ function App() {
                         )}
                       </div>
 
+                      {/* ===== INFO TÉCNICA ===== */}
+                      <div className="rounded-xl border p-4" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#9CA3AF' }} />
+                          <h4 className="text-xs font-bold text-gray-900 tracking-wide">INFO TÉCNICA</h4>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3 text-xs">
+                          <div className="rounded-lg p-2.5" style={{ backgroundColor: '#FFFFFF' }}>
+                            <p className="text-gray-600">Formato</p>
+                            <p className="font-mono font-bold text-gray-900 mt-1">{analysisResult.metadata?.format || 'N/A'}</p>
+                          </div>
+                          <div className="rounded-lg p-2.5" style={{ backgroundColor: '#FFFFFF' }}>
+                            <p className="text-gray-600">Duración</p>
+                            <p className="font-mono font-bold text-gray-900 mt-1">{analysisResult.metadata?.duration ? `${analysisResult.metadata.duration.toFixed(1)}s` : 'N/A'}</p>
+                          </div>
+                          <div className="rounded-lg p-2.5" style={{ backgroundColor: '#FFFFFF' }}>
+                            <p className="text-gray-600">Procesado</p>
+                            <p className="font-mono font-bold text-gray-900 mt-1">{analysisResult.processing_time?.toFixed(2) || 'N/A'}s</p>
+                          </div>
+                        </div>
+                      </div>
+
                       {/* ===== BANNER DE VEREDICTO ===== */}
                       <div className="rounded-xl border-2 p-4" style={{
                         backgroundColor: analysisResult.is_ai_generated ? '#FEF2F2' : '#F0FDF4',
@@ -1268,27 +1290,6 @@ function App() {
                         )
                       })()}
 
-                      {/* ===== INFO TÉCNICA ===== */}
-                      <div className="rounded-xl border p-4" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#9CA3AF' }} />
-                          <h4 className="text-xs font-bold text-gray-900 tracking-wide">INFO TÉCNICA</h4>
-                        </div>
-                        <div className="grid grid-cols-3 gap-3 text-xs">
-                          <div className="rounded-lg p-2.5" style={{ backgroundColor: '#FFFFFF' }}>
-                            <p className="text-gray-600">Formato</p>
-                            <p className="font-mono font-bold text-gray-900 mt-1">{analysisResult.metadata?.format || 'N/A'}</p>
-                          </div>
-                          <div className="rounded-lg p-2.5" style={{ backgroundColor: '#FFFFFF' }}>
-                            <p className="text-gray-600">Duración</p>
-                            <p className="font-mono font-bold text-gray-900 mt-1">{analysisResult.metadata?.duration ? `${analysisResult.metadata.duration.toFixed(1)}s` : 'N/A'}</p>
-                          </div>
-                          <div className="rounded-lg p-2.5" style={{ backgroundColor: '#FFFFFF' }}>
-                            <p className="text-gray-600">Procesado</p>
-                            <p className="font-mono font-bold text-gray-900 mt-1">{analysisResult.processing_time?.toFixed(2) || 'N/A'}s</p>
-                          </div>
-                        </div>
-                      </div>
                     </div>
                     )
                   })()}
