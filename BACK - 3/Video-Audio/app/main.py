@@ -12,14 +12,6 @@ from app.models import (
     VideoAnalysisRequest,
     ErrorResponse
 )
-from app.services.audio_analyzer import AudioAnalyzer
-from app.services.video_analyzer import VideoAnalyzer
-from app.services.transcription_service import TranscriptionService
-from app.services.deepgram_service import DeepgramTranscriptionService
-from app.services.content_analyzer import ContentAnalyzer
-from app.services.fact_checker import FactChecker
-from app.services.web_searcher import WebSearcher
-from app.services.llm_analyzer import LLMAnalyzer
 from app.utils.file_handler import FileHandler
 from app.services.firebase_service import save_analysis_to_firestore
 
@@ -42,16 +34,80 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize services
-audio_analyzer = AudioAnalyzer()
-video_analyzer = VideoAnalyzer()
-transcription_service = TranscriptionService()
-deepgram_service = DeepgramTranscriptionService()
-content_analyzer = ContentAnalyzer()
-fact_checker = FactChecker()
-web_searcher = WebSearcher()
-llm_analyzer = LLMAnalyzer()
+# Initialize lightweight services eagerly; heavy services load lazily
+audio_analyzer = None
+video_analyzer = None
+transcription_service = None
+deepgram_service = None
+content_analyzer = None
+fact_checker = None
+web_searcher = None
+llm_analyzer = None
 file_handler = FileHandler()
+
+
+def get_audio_analyzer():
+    global audio_analyzer
+    if audio_analyzer is None:
+        from app.services.audio_analyzer import AudioAnalyzer
+        audio_analyzer = AudioAnalyzer()
+    return audio_analyzer
+
+
+def get_video_analyzer():
+    global video_analyzer
+    if video_analyzer is None:
+        from app.services.video_analyzer import VideoAnalyzer
+        video_analyzer = VideoAnalyzer()
+    return video_analyzer
+
+
+def get_transcription_service():
+    global transcription_service
+    if transcription_service is None:
+        from app.services.transcription_service import TranscriptionService
+        transcription_service = TranscriptionService()
+    return transcription_service
+
+
+def get_deepgram_service():
+    global deepgram_service
+    if deepgram_service is None:
+        from app.services.deepgram_service import DeepgramTranscriptionService
+        deepgram_service = DeepgramTranscriptionService()
+    return deepgram_service
+
+
+def get_content_analyzer():
+    global content_analyzer
+    if content_analyzer is None:
+        from app.services.content_analyzer import ContentAnalyzer
+        content_analyzer = ContentAnalyzer()
+    return content_analyzer
+
+
+def get_fact_checker():
+    global fact_checker
+    if fact_checker is None:
+        from app.services.fact_checker import FactChecker
+        fact_checker = FactChecker()
+    return fact_checker
+
+
+def get_web_searcher():
+    global web_searcher
+    if web_searcher is None:
+        from app.services.web_searcher import WebSearcher
+        web_searcher = WebSearcher()
+    return web_searcher
+
+
+def get_llm_analyzer():
+    global llm_analyzer
+    if llm_analyzer is None:
+        from app.services.llm_analyzer import LLMAnalyzer
+        llm_analyzer = LLMAnalyzer()
+    return llm_analyzer
 
 
 async def perform_content_analysis(file_path: str, is_video: bool = False, source_metadata: dict = None, skip_transcription: bool = False) -> dict:
@@ -73,9 +129,9 @@ async def perform_content_analysis(file_path: str, is_video: bool = False, sourc
         if skip_transcription:
             transcription = {'text': '', 'language': 'es', 'segments': []}
         elif is_video:
-            transcription = await transcription_service.transcribe_video(file_path)
+            transcription = await get_transcription_service().transcribe_video(file_path)
         else:
-            transcription = await transcription_service.transcribe(file_path)
+            transcription = await get_transcription_service().transcribe(file_path)
         
         text = transcription.get('text', '')
 
@@ -86,9 +142,9 @@ async def perform_content_analysis(file_path: str, is_video: bool = False, sourc
         if settings.deepgram_api_key and not skip_transcription:
             try:
                 if is_video:
-                    deepgram_backup = await deepgram_service.transcribe_video(file_path)
+                    deepgram_backup = await get_deepgram_service().transcribe_video(file_path)
                 else:
-                    deepgram_backup = await deepgram_service.transcribe(file_path)
+                    deepgram_backup = await get_deepgram_service().transcribe(file_path)
             except Exception as e:
                 print(f"ℹ️ Deepgram backup/verificacion no disponible: {e}")
 
@@ -109,13 +165,13 @@ async def perform_content_analysis(file_path: str, is_video: bool = False, sourc
             }
         
         # Content analysis
-        fake_news = await content_analyzer.analyze_content(text)
+        fake_news = await get_content_analyzer().analyze_content(text)
         
         # Extract claims
-        extracted_claims = await content_analyzer.extract_claims(text)
+        extracted_claims = await get_content_analyzer().extract_claims(text)
         
         # Fact-checking (full text)
-        fact_checking = await fact_checker.analyze_text(text)
+        fact_checking = await get_fact_checker().analyze_text(text)
         
         # Per-segment fact-checking
         segments = transcription.get('segments', [])
@@ -132,7 +188,7 @@ async def perform_content_analysis(file_path: str, is_video: bool = False, sourc
                 seg_text = seg_text[:80]
                 
                 # Check this segment with Google Fact Check
-                seg_result = await fact_checker.check_claim(seg_text)
+                seg_result = await get_fact_checker().check_claim(seg_text)
                 
                 checks_found = seg_result.get('fact_checks_found', 0)
                 fact_checks = seg_result.get('fact_checks', [])
@@ -191,17 +247,17 @@ async def perform_content_analysis(file_path: str, is_video: bool = False, sourc
                 # Use first 100 chars of transcription as query
                 search_query = text[:100].strip()
             
-            articles = await web_searcher.search_news(search_query, max_results=8)
+            articles = await get_web_searcher().search_news(search_query, max_results=8)
             
             # If no news results, try general search
             if not articles:
                 print("📰 News search empty, trying general search...")
-                articles = await web_searcher.search_general(search_query, max_results=8)
+                articles = await get_web_searcher().search_general(search_query, max_results=8)
             
             print(f"📰 Total articles found: {len(articles)}")
             
             # Cross-reference with reliable sources
-            cross_ref = web_searcher._cross_reference(text, articles)
+            cross_ref = get_web_searcher()._cross_reference(text, articles)
             
             web_context = {
                 'articles': articles,
@@ -218,7 +274,7 @@ async def perform_content_analysis(file_path: str, is_video: bool = False, sourc
         try:
             title = source_metadata.get('title', '') if source_metadata else ''
             channel = source_metadata.get('channel', '') if source_metadata else ''
-            llm_analysis = await llm_analyzer.analyze_transcription(
+            llm_analysis = await get_llm_analyzer().analyze_transcription(
                 transcription=text,
                 title=title,
                 channel=channel,
@@ -342,7 +398,7 @@ async def analyze_audio_file(
         
         try:
             # Analyze audio
-            result = await audio_analyzer.analyze(temp_path)
+            result = await get_audio_analyzer().analyze(temp_path)
             
             # Perform content analysis
             content_analysis_dict = await perform_content_analysis(temp_path)
@@ -409,7 +465,7 @@ async def analyze_video_file(
 
         try:
             # Analyze video
-            result = await video_analyzer.analyze(temp_path)
+            result = await get_video_analyzer().analyze(temp_path)
 
             # Perform content analysis (extract audio + transcribe)
             content_analysis_dict = await perform_content_analysis(temp_path, is_video=True)
@@ -480,9 +536,9 @@ async def analyze_from_url(request: AudioAnalysisRequest):
             is_video = file_handler.is_video_file(temp_path)
             
             if file_handler.is_audio_file(temp_path):
-                result = await audio_analyzer.analyze(temp_path)
+                result = await get_audio_analyzer().analyze(temp_path)
             elif is_video:
-                result = await video_analyzer.analyze(temp_path)
+                result = await get_video_analyzer().analyze(temp_path)
             else:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
