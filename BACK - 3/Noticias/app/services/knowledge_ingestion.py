@@ -82,12 +82,63 @@ def ingest_csv_to_chunks(
     return chunks
 
 
+def ingest_pdf_to_chunks(
+    pdf_path: str | Path,
+    source_id: str,
+    chunk_size: int = 1200,
+    overlap: int = 160,
+) -> list[KnowledgeChunk]:
+    path = Path(pdf_path)
+    if not path.exists():
+        raise FileNotFoundError(f"No existe el PDF: {path}")
+
+    text_by_page = _extract_pdf_pages(path)
+    chunks: list[KnowledgeChunk] = []
+    for page_index, page_text in enumerate(text_by_page):
+        if not page_text.strip():
+            continue
+        metadata = {
+            "source_file": path.name,
+            "page_index": page_index,
+            "page_number": page_index + 1,
+        }
+        for chunk_index, chunk_text in enumerate(_chunk_text(page_text, chunk_size=chunk_size, overlap=overlap)):
+            chunk_id = _stable_id(source_id, page_index, chunk_index, chunk_text)
+            chunks.append(
+                KnowledgeChunk(
+                    id=chunk_id,
+                    source_id=source_id,
+                    chunk_index=chunk_index,
+                    title=path.stem,
+                    text=chunk_text,
+                    keywords=_extract_keywords(chunk_text),
+                    metadata=metadata,
+                )
+            )
+    return chunks
+
+
 def write_chunks_jsonl(chunks: list[KnowledgeChunk], output_path: str | Path) -> None:
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as file:
         for chunk in chunks:
             file.write(json.dumps(chunk.to_firestore_dict(), ensure_ascii=False) + "\n")
+
+
+def _extract_pdf_pages(path: Path) -> list[str]:
+    try:
+        from pypdf import PdfReader
+    except ImportError as exc:
+        raise RuntimeError("Para subir PDF instala pypdf en requirements.txt.") from exc
+
+    reader = PdfReader(str(path))
+    pages: list[str] = []
+    for page in reader.pages:
+        pages.append(page.extract_text() or "")
+    if not any(page.strip() for page in pages):
+        raise ValueError("No se pudo extraer texto del PDF. Puede ser escaneado/imagen.")
+    return pages
 
 
 def _pick_text(row: dict[str, str], text_columns: list[str]) -> str:
@@ -157,4 +208,3 @@ def _extract_keywords(text: str, limit: int = 12) -> list[str]:
 def _stable_id(source_id: str, row_index: int, chunk_index: int, text: str) -> str:
     digest = hashlib.sha256(f"{source_id}:{row_index}:{chunk_index}:{text[:120]}".encode("utf-8")).hexdigest()
     return digest[:24]
-

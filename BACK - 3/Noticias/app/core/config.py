@@ -68,6 +68,9 @@ class Settings:
     max_article_chars: int = 24_000
     related_news_limit: int = 6
     related_source_search_limit: int = 12
+    knowledge_sources_dir: str = "data/knowledge_sources"
+    knowledge_context_limit: int = 5
+    knowledge_context_chunk_chars: int = 900
 
     @property
     def cors_origins(self) -> list[str]:
@@ -116,6 +119,9 @@ def get_settings() -> Settings:
         max_article_chars=int(_env("MAX_ARTICLE_CHARS", "24000")),
         related_news_limit=int(_env("RELATED_NEWS_LIMIT", "6")),
         related_source_search_limit=int(_env("RELATED_SOURCE_SEARCH_LIMIT", "12")),
+        knowledge_sources_dir=_env("KNOWLEDGE_SOURCES_DIR", "data/knowledge_sources"),
+        knowledge_context_limit=int(_env("KNOWLEDGE_CONTEXT_LIMIT", "5")),
+        knowledge_context_chunk_chars=int(_env("KNOWLEDGE_CONTEXT_CHUNK_CHARS", "900")),
     )
 
 

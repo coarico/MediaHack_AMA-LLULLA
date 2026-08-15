@@ -2,6 +2,7 @@ import json
 import re
 
 from app.schemas.news import ExtractedArticle, LlmCompactContext, VerifiableClaim
+from app.services.knowledge_base import find_relevant_knowledge
 from app.services.keyword_extractor import extract_keywords
 
 
@@ -19,6 +20,19 @@ def build_llm_compact_context(
     claims = [claim.claim for claim in (candidate_claims or [])][:MAX_CLAIMS]
     if not claims:
         claims = top_sentences[:4]
+    knowledge_context = find_relevant_knowledge(
+        " ".join(
+            value
+            for value in [
+                article.title or "",
+                article.source_domain or "",
+                " ".join(keywords[:12]),
+                " ".join(claims[:4]),
+                " ".join(top_sentences[:4]),
+            ]
+            if value
+        )
+    )
 
     compact_payload = {
         "title": article.title,
@@ -27,6 +41,7 @@ def build_llm_compact_context(
         "keywords": keywords[:12],
         "top_sentences": top_sentences,
         "candidate_claims": claims,
+        "knowledge_context": knowledge_context,
     }
     compact_text = json.dumps(compact_payload, ensure_ascii=False, separators=(",", ":"))
     original_chars = len(article.text or "")
@@ -40,6 +55,7 @@ def build_llm_compact_context(
         keywords=keywords[:12],
         top_sentences=top_sentences,
         candidate_claims=claims,
+        knowledge_context=knowledge_context,
         original_text_chars=original_chars,
         compact_text_chars=compact_chars,
         estimated_tokens=max(1, round(compact_chars / 4)),

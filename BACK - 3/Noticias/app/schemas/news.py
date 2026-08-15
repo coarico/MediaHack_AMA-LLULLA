@@ -301,6 +301,7 @@ class LlmCompactContext(BaseModel):
     keywords: list[str] = Field(default_factory=list)
     top_sentences: list[str] = Field(default_factory=list)
     candidate_claims: list[str] = Field(default_factory=list)
+    knowledge_context: list[dict] = Field(default_factory=list)
     original_text_chars: int = 0
     compact_text_chars: int = 0
     estimated_tokens: int = 0
