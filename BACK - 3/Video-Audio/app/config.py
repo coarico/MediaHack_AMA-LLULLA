@@ -31,7 +31,8 @@ class Settings(BaseSettings):
     cors_origins: List[str] = [
         "http://localhost:5173",
         "http://localhost:5174",
-        "https://coarico.github.io"
+        "https://coarico.github.io",
+        "https://amallulia.vercel.app"
     ]
     
     # Google APIs

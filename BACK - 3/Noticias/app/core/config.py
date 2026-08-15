@@ -34,7 +34,7 @@ def _load_dotenv() -> None:
 @dataclass(frozen=True)
 class Settings:
     app_env: str = "local"
-    cors_origins_raw: str = "http://localhost:5173,http://127.0.0.1:5173"
+    cors_origins_raw: str = "http://localhost:5173,http://127.0.0.1:5173,https://amallulia.vercel.app"
     cors_origin_regex: str | None = None
     llm_provider: str = "auto"
     llm_fallback_on_error: bool = True
@@ -81,7 +81,7 @@ def get_settings() -> Settings:
         raise RuntimeError(f"LLM_PROVIDER invalido: {llm_provider}. Usa auto, groq, openai o none.")
     return Settings(
         app_env=_env("APP_ENV", "local"),
-        cors_origins_raw=_env("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"),
+        cors_origins_raw=_env("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,https://amallulia.vercel.app"),
         cors_origin_regex=_env_optional("CORS_ORIGIN_REGEX"),
         llm_provider=llm_provider,
         llm_fallback_on_error=_env_bool("LLM_FALLBACK_ON_ERROR", True),
