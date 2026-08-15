@@ -2,6 +2,7 @@ import os
 import shutil
 import uuid
 import httpx
+import cv2
 from pathlib import Path
 from fastapi import UploadFile
 from typing import Optional
@@ -187,6 +188,7 @@ class FileHandler:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
                 filename = ydl.prepare_filename(info)
+                downloaded_path = Path(filename)
                 
                 # Detect platform from extractor
                 extractor = info.get('extractor_key', 'Unknown')
@@ -208,17 +210,25 @@ class FileHandler:
                     'thumbnail': info.get('thumbnail', ''),
                     'thumbnails': info.get('thumbnails', [])
                 }
-                
-            return Path(filename), metadata
+
+            self._validate_video_file(downloaded_path)
+            return downloaded_path, metadata
         except yt_dlp.utils.DownloadError as e:
             # Fallback: try alternative methods based on platform
             print(f"🔄 yt-dlp failed, trying alternative download methods...")
-            try:
-                result = await self._download_fallback(url)
-                if result:
-                    return result
-            except Exception as fallback_err:
-                print(f"⚠️ All fallback methods failed: {fallback_err}")
+            if self._is_tiktok_url(url):
+                try:
+                    result = await self._download_fallback(url)
+                    if result:
+                        return result
+                except Exception as fallback_err:
+                    print(f"⚠️ All fallback methods failed: {fallback_err}")
+
+            if self._is_youtube_url(url):
+                raise ValueError(
+                    "YouTube bloqueó la descarga automática (anti-bot). "
+                    "Prueba otro enlace, sube el archivo manualmente o usa un proxy/cookies para yt-dlp."
+                )
             raise ValueError(f"No se pudo descargar el video de esta plataforma. Intenta con YouTube u otra URL. ({str(e)[:80]})")
         except Exception as e:
             raise ValueError(f"Error al descargar: {str(e)[:100]}")
@@ -229,8 +239,11 @@ class FileHandler:
         import imageio_ffmpeg
         
         # Detect platform
-        is_tiktok = 'tiktok.com' in url
+        is_tiktok = self._is_tiktok_url(url)
         platform = 'TikTok' if is_tiktok else 'Unknown'
+
+        if not is_tiktok:
+            raise ValueError("Fallback solo disponible para enlaces de TikTok")
         
         async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
             download_url = None
@@ -271,12 +284,6 @@ class FileHandler:
                     metadata['channel'] = author.get('nickname', '')
                 metadata['duration'] = float(video_data.get('duration', 0))
                 metadata['view_count'] = int(video_data.get('play_count', 0))
-            else:
-                # For other platforms, try direct download
-                print("🔄 Trying direct HTTP download...")
-                download_url = url
-                metadata['title'] = url.split('/')[-1][:50]
-            
             # Download the video file
             unique_id = str(uuid.uuid4())
             output_path = self.temp_dir / f"{unique_id}.mp4"
@@ -284,8 +291,13 @@ class FileHandler:
             video_response = await client.get(download_url)
             if video_response.status_code != 200:
                 raise ValueError(f"Download failed: HTTP {video_response.status_code}")
+
+            content_type = (video_response.headers.get('content-type') or '').lower()
+            if 'text/html' in content_type:
+                raise ValueError("La URL devolvió HTML en lugar de un archivo de video")
             
             output_path.write_bytes(video_response.content)
+            self._validate_video_file(output_path)
             
             # Get duration with ffprobe
             ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
@@ -305,6 +317,26 @@ class FileHandler:
             
             print(f"✅ Fallback download successful: {output_path.name}")
             return output_path, metadata
+
+    def _is_tiktok_url(self, url: str) -> bool:
+        return 'tiktok.com' in url
+
+    def _is_youtube_url(self, url: str) -> bool:
+        return 'youtube.com' in url or 'youtu.be' in url
+
+    def _validate_video_file(self, file_path: Path) -> None:
+        if not file_path.exists() or file_path.stat().st_size < 1024:
+            raise ValueError("El archivo descargado está vacío o incompleto")
+
+        cap = cv2.VideoCapture(str(file_path))
+        if not cap.isOpened():
+            cap.release()
+            raise ValueError("El archivo descargado no es un video válido")
+
+        ok, _ = cap.read()
+        cap.release()
+        if not ok:
+            raise ValueError("No se pudieron leer frames del video descargado")
     
     def is_audio_file(self, file_path: Path) -> bool:
         """Check if file is an audio file based on extension"""
