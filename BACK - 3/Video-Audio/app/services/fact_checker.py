@@ -16,24 +16,27 @@ class FactChecker:
         self.service = None
         
     def _init_service(self):
-        """Initialize Google API service"""
+        """Initialize Google Fact Check API client"""
         if self.service is None and settings.enable_fact_checking:
             try:
-                # Check if credentials file exists
-                creds_path = settings.google_application_credentials
-                
-                if os.path.exists(creds_path):
-                    print("🔍 Initializing Google Fact Check API...")
-                    credentials = service_account.Credentials.from_service_account_file(
-                        creds_path,
-                        scopes=['https://www.googleapis.com/auth/userinfo.email']
-                    )
-                    
-                    self.service = build('factchecktools', 'v1alpha1', credentials=credentials)
+                api_key = settings.google_fact_check_api_key
+                if api_key:
+                    print("🔍 Initializing Google Fact Check API with API key...")
+                    self.service = build('factchecktools', 'v1alpha1', developerKey=api_key)
                     print("✅ Google Fact Check API initialized")
                 else:
-                    print(f"⚠️ Credentials file not found: {creds_path}")
-                    
+                    # No API key - use service account as fallback
+                    creds_path = settings.google_application_credentials
+                    if os.path.exists(creds_path):
+                        credentials = service_account.Credentials.from_service_account_file(
+                            creds_path,
+                            scopes=['https://www.googleapis.com/auth/userinfo.email']
+                        )
+                        self.service = build('factchecktools', 'v1alpha1', credentials=credentials)
+                        print("✅ Google Fact Check API initialized (service account)")
+                    else:
+                        print("⚠️ No Fact Check API key or credentials found, skipping fact-check")
+                        self.service = None
             except Exception as e:
                 print(f"⚠️ Could not initialize Google Fact Check API: {e}")
                 self.service = None
@@ -59,10 +62,31 @@ class FactChecker:
                 'status': 'service_unavailable'
             }
         
+        # Google Fact Check API needs meaningful claims, not short fragments
+        query = claim.strip()[:80]
+        # Skip queries that are too short or just filler words
+        if len(query) < 20:
+            return {
+                'claim': claim,
+                'fact_checks_found': 0,
+                'fact_checks': [],
+                'status': 'query_too_short'
+            }
+        # Skip common filler phrases that aren't claims
+        filler_words = ['en todo caso', 'por lo tanto', 'es decir', 'o el cual', 'entre ustedes',
+                        'no te acuerdo', 'para que', 'con el cual', 'de la misma']
+        if any(query.lower().startswith(fw) for fw in filler_words):
+            return {
+                'claim': claim,
+                'fact_checks_found': 0,
+                'fact_checks': [],
+                'status': 'not_a_claim'
+            }
+        
         try:
             # Search for fact-checks
             request = self.service.claims().search(
-                query=claim,
+                query=query,
                 languageCode=language,
                 pageSize=5
             )
@@ -146,8 +170,15 @@ class FactChecker:
         Returns:
             Dict with analysis results
         """
-        # Extract potential claims (simple approach)
-        sentences = [s.strip() for s in text.split('.') if len(s.strip()) > 30]
+        # Extract meaningful claims - sentences between 20-80 chars, skip fillers
+        filler_starts = {'en todo caso', 'por lo tanto', 'es decir', 'o el cual', 'entre ustedes',
+                         'no te acuerdo', 'para que', 'con el cual', 'de la misma', 'pero bueno',
+                         'y entonces', 'o sea', 'pues bien', 'así que'}
+        sentences = []
+        for s in text.split('.'):
+            s = s.strip()
+            if 20 < len(s) <= 80 and not any(s.lower().startswith(fw) for fw in filler_starts):
+                sentences.append(s[:80])
         
         # Limit to first 3 sentences to avoid API quota
         claims_to_check = sentences[:3]

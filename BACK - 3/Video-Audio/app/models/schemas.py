@@ -61,6 +61,7 @@ class TranscriptionResult(BaseModel):
     duration: Optional[float] = Field(None, description="Audio duration in seconds")
     segments: Optional[List[dict]] = Field(None, description="Detailed transcription segments")
     segment_verifications: Optional[List[SegmentVerification]] = Field(None, description="Per-segment fact-check results")
+    deepgram_backup: Optional[Dict] = Field(None, description="Transcripcion de respaldo/verificacion generada con Deepgram (independiente de la transcripcion principal)")
 
 
 class FactCheckReview(BaseModel):
@@ -98,6 +99,8 @@ class ContentAnalysisResult(BaseModel):
     fake_news: Optional[FakeNewsAnalysis] = None
     fact_checking: Optional[FactCheckResult] = None
     extracted_claims: List[str] = Field(default_factory=list, description="Key claims extracted")
+    web_context: Optional[Dict] = Field(None, description="Web search context and articles")
+    llm_analysis: Optional[Dict] = Field(None, description="LLM analysis results (verdict, summary, etc.)")
 
 
 class MediaMetadata(BaseModel):

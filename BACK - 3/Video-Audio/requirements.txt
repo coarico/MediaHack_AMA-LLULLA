@@ -29,6 +29,7 @@ httpx==0.25.2
 openai-whisper==20231117
 ffmpeg-python==0.2.0
 yt-dlp==2024.8.6
+deepgram-sdk==7.7.0
 
 # Fact-Checking & Content Analysis
 google-api-python-client==2.108.0
