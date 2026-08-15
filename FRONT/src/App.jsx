@@ -20,7 +20,7 @@ function App() {
   const [analysisResult, setAnalysisResult] = useState(null)
   const [error, setError] = useState(null)
   const [messages, setMessages] = useState([
-    { role: 'bot', text: 'Hola. Soy el asistente de AMA-LLU-IA. Puedes preguntarme sobre verificación de contenido electoral.' }
+    { role: 'bot', text: 'Hola. Soy el asistente de AMA LLU-IA. Puedes preguntarme sobre verificación de contenido electoral.' }
   ])
   const [inputMessage, setInputMessage] = useState('')
   const chatEndRef = useRef(null)
@@ -228,7 +228,7 @@ function App() {
                 style={{ color: BRAND_NAVY, opacity: 0.06 }}
               />
               <div className="relative flex items-start gap-4 max-w-2xl">
-                <img src={logo} alt="AMA-LLU-IA" className="w-12 h-12 rounded-lg flex-shrink-0 object-cover" />
+                <img src={logo} alt="AMA LLU-IA" className="w-12 h-12 rounded-lg flex-shrink-0 object-cover" />
                 <div>
                   <span
                     className="inline-block text-xs font-semibold px-2.5 py-1 rounded-full mb-3"
@@ -236,7 +236,9 @@ function App() {
                   >
                     Verificación de contenido electoral
                   </span>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Bienvenido a AMA-LLU-IA</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    Bienvenido a AMA LLU-<span style={{ color: BRAND_ORANGE }}>IA</span>
+                  </h2>
                   <p className="text-sm leading-relaxed text-gray-600">
                     En época de elecciones, la información circula más rápido de lo que se puede verificar.
                     Esta herramienta analiza noticias, videos y audios para ayudarte a identificar señales de
@@ -345,7 +347,9 @@ function App() {
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Search className="w-5 h-5" style={{ color: BRAND_ORANGE }} />
-                  <h3 className="text-base font-semibold text-gray-900">¿Cómo te ayuda AMA-LLU-IA?</h3>
+                  <h3 className="text-base font-semibold text-gray-900">
+                    ¿Cómo te ayuda AMA LLU-<span style={{ color: BRAND_ORANGE }}>IA</span>?
+                  </h3>
                 </div>
                 <p className="text-xs leading-relaxed text-gray-600">
                   Cuatro herramientas, un mismo objetivo: darte elementos para decidir con criterio propio.
@@ -457,7 +461,7 @@ function App() {
               <div className="flex items-start gap-3 mt-4 pt-4" style={{ borderTop: '1px solid #E9ECEF' }}>
                 <Users className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#7A8290' }} />
                 <p className="text-xs leading-relaxed text-gray-600">
-                  La decisión de creer, dudar o compartir un contenido siempre es tuya. AMA-LLU-IA solo facilita el
+                  La decisión de creer, dudar o compartir un contenido siempre es tuya. AMA LLU-IA solo facilita el
                   trabajo de verificación.
                 </p>
               </div>
@@ -1238,7 +1242,7 @@ function App() {
             />
             <span>Conectado</span>
           </div>
-          <span>AMA-LLU-IA v1.0 · MediaHack II</span>
+          <span>AMA LLU-IA v1.0 · MediaHack II</span>
         </div>
       </div>
 
