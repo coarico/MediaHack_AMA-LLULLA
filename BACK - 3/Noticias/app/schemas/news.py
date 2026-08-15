@@ -198,6 +198,15 @@ class SourceClassification(BaseModel):
     confidence: float = Field(ge=0, le=1)
     explanation: str
 
+    @property
+    def registry_status(self) -> str:
+        # Backward-compatible status used by legacy recommendation logic.
+        if self.is_radar_media:
+            return "radar"
+        if self.registry_category or self.source_name:
+            return "registered"
+        return "unknown"
+
 
 class SentimentAnalysis(BaseModel):
     label: Literal["positivo", "neutral", "negativo", "mixto"]

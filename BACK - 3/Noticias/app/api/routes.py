@@ -566,7 +566,7 @@ def _build_review_recommendations(
             }
         )
 
-    if not source_classification.is_radar_media and source_classification.registry_status == "unknown":
+    if source_classification.registry_status == "unknown":
         recommendations.append(
             {
                 "title": "Fuente no registrada en la base interna",
