@@ -51,10 +51,10 @@ class WebSearcher:
                     })
                 if results:
                     break
-                # Wait before retry if no results
+                # No news results found, try again
                 await asyncio.sleep(2)
             except Exception as e:
-                print(f"⚠️ News search attempt {attempt+1} failed: {e}")
+                print(f"ℹ️ News search retry {attempt+1}: {e}")
                 await asyncio.sleep(3)
         
         # Fallback to text search if news returned nothing

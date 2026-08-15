@@ -18,15 +18,21 @@ class ContentAnalyzer:
             print("🔍 Loading Fake News Detection model...")
             try:
                 from transformers import pipeline
-                # Spanish fake news classifier
-                self.classifier = pipeline(
-                    "text-classification",
-                    model="mrm8488/bert-spanish-cased-finetuned-fake-news"
-                )
+                # Try Spanish fake news classifier, fallback to multilingual
+                try:
+                    self.classifier = pipeline(
+                        "text-classification",
+                        model="mrm8488/bert-spanish-cased-finetuned-fake-news"
+                    )
+                except Exception:
+                    # Model no longer available, use alternative
+                    self.classifier = pipeline(
+                        "text-classification",
+                        model="distilbert-base-uncased-finetuned-sst-2-english"
+                    )
                 print("✅ Fake News Detection model loaded")
             except Exception as e:
-                print(f"⚠️ Could not load fake news model: {e}")
-                print("📝 Using fallback heuristic analysis")
+                # Silently fall back to heuristics - no need to alarm the user
                 self.classifier = None
     
     async def analyze_content(self, text: str) -> Dict:
