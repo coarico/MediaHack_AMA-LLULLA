@@ -257,9 +257,14 @@ def _combine_verdicts(result, content_analysis_dict):
     """Combine video/audio analyzer verdict with LLM verdict"""
     llm_verdict = content_analysis_dict.get('llm_verdict', '').upper() if content_analysis_dict else ''
     llm_confidence = content_analysis_dict.get('llm_confidence', 0) if content_analysis_dict else 0
+    llm_analysis = content_analysis_dict.get('llm_analysis', {}) if content_analysis_dict else {}
+    indicios_ia = (llm_analysis.get('indicios_ia', '') or '').lower() if llm_analysis else ''
     
     if not llm_verdict:
         return
+    
+    # Check if LLM detected AI generation indicators
+    has_ai_indicators = indicios_ia and 'no se detectaron' not in indicios_ia
     
     # LLM says FALSO or likely AI-generated
     if llm_verdict in ['FALSO', 'FALSIFICADO', 'ENGAÑOSO', 'IA_GENERADO']:
@@ -270,7 +275,14 @@ def _combine_verdicts(result, content_analysis_dict):
             # Blend confidence: weight LLM confidence more if video said real
             llm_conf = llm_confidence / 100.0 if llm_confidence > 1 else llm_confidence
             result.confidence = max(result.confidence, llm_conf * 0.7 + 0.3)
-    elif llm_verdict in ['AUTÉNTICO', 'VERDADERO', 'REAL'] and llm_confidence >= 80:
+    # LLM detected AI indicators even if verdict is MIXTO
+    elif has_ai_indicators and llm_verdict in ['MIXTO']:
+        if not result.is_ai_generated:
+            print(f"🔧 LLM AI indicators detected: {indicios_ia[:80]}")
+            result.is_ai_generated = True
+            llm_conf = llm_confidence / 100.0 if llm_confidence > 1 else llm_confidence
+            result.confidence = max(result.confidence, llm_conf * 0.5 + 0.3)
+    elif llm_verdict in ['AUTÉNTICO', 'VERDADERO', 'REAL'] and llm_confidence >= 80 and not has_ai_indicators:
         # LLM is very confident it's real, boost the real score
         if not result.is_ai_generated:
             llm_conf = llm_confidence / 100.0 if llm_confidence > 1 else llm_confidence

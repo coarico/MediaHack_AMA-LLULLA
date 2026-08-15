@@ -135,6 +135,9 @@ class LLMAnalyzer:
         system_prompt = (
             "Eres un analista de contenido electoral y político para Ecuador. "
             "Analizas transcripciones de videos y das un veredicto estructurado. "
+            "También detectas si el contenido parece generado o manipulado por IA: "
+            "voz sintética, guion robótico, narración generada artificialmente, "
+            "escenarios ficticios presentados como reales, o animaciones IA. "
             "Respondes SOLO en formato JSON válido, sin texto adicional."
         )
 
@@ -148,6 +151,11 @@ class LLMAnalyzer:
 
         user_prompt += (
             f"\nTranscripción:\n{trans_truncated}\n\n"
+            f"Evalúa los siguientes aspectos:\n"
+            f"1. ¿El contenido es verídico, engañoso o falso?\n"
+            f"2. ¿La transcripción parece generada por IA? (voz sintética, guion robótico, "
+            f"narración artificial, escenario ficticio, animación IA, avatar digital)\n"
+            f"3. ¿Hay indicios de manipulación o recortes engañosos?\n\n"
             f"Responde en JSON con esta estructura exacta:\n"
             '{{\n'
             '  "tema_principal": "breve descripción del tema (máx 100 chars)",\n'
@@ -157,7 +165,8 @@ class LLMAnalyzer:
             '  "afirmaciones_clave": ["afirmación 1", "afirmación 2", "afirmación 3"],\n'
             '  "contexto_politico": "contexto relevante (máx 200 chars)",\n'
             '  "coincide_con_fuentes": true|false,\n'
-            '  "observaciones": "nota sobre manipulación, recortes, o algo relevante (máx 200 chars)"\n'
+            '  "indicios_ia": "Descripción de indicios de generación por IA detectados, o \"No se detectaron indicios\" (máx 200 chars)",\n'
+            '  "observaciones": "nota sobre manipulación, recortes, generación IA, o algo relevante (máx 200 chars)"\n'
             '}}'
         )
 
