@@ -1,5 +1,13 @@
-const NOTICIAS_API_BASE_URL = resolveApiBaseUrl('VITE_NOTICIAS_API_URL', 8001);
-const VIDEO_AUDIO_API_BASE_URL = resolveApiBaseUrl('VITE_VIDEO_AUDIO_API_URL', 8002);
+const NOTICIAS_API_BASE_URL = resolveApiBaseUrl(
+  'VITE_NOTICIAS_API_URL',
+  8001,
+  'https://noticias-api-production.up.railway.app',
+);
+const VIDEO_AUDIO_API_BASE_URL = resolveApiBaseUrl(
+  'VITE_VIDEO_AUDIO_API_URL',
+  8002,
+  'https://video-audio-production.up.railway.app',
+);
 
 export const analyzeNewsUrl = async (url) => {
   const response = await fetch(`${NOTICIAS_API_BASE_URL}/api/v1/noticias/analyze`, {
@@ -63,10 +71,10 @@ async function parseResponse(response) {
   return data;
 }
 
-function resolveApiBaseUrl(envKey, port) {
+function resolveApiBaseUrl(envKey, port, productionFallback) {
   const configuredUrl = import.meta.env[envKey];
-  if (configuredUrl && !configuredUrl.includes('localhost')) return configuredUrl.replace(/\/$/, '');
-  if (typeof window === 'undefined') return configuredUrl || `http://localhost:${port}`;
+  if (configuredUrl && !configuredUrl.includes('localhost')) return normalizeApiUrl(configuredUrl);
+  if (typeof window === 'undefined') return configuredUrl || productionFallback || `http://localhost:${port}`;
 
   const { protocol, hostname } = window.location;
   if (hostname.endsWith('.app.github.dev')) {
@@ -79,5 +87,11 @@ function resolveApiBaseUrl(envKey, port) {
     return `${protocol}//${hostname.replace('5173', String(port))}`;
   }
 
-  return configuredUrl || `http://localhost:${port}`;
+  return configuredUrl || productionFallback || `http://localhost:${port}`;
+}
+
+function normalizeApiUrl(url) {
+  const cleanUrl = url.replace(/\/$/, '');
+  if (/^https?:\/\//i.test(cleanUrl)) return cleanUrl;
+  return `https://${cleanUrl}`;
 }
