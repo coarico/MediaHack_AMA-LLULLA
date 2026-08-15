@@ -1,0 +1,82 @@
+services:
+  noticias-api:
+    build:
+      context: ./BACK - 3/Noticias
+    container_name: ama-lluia-noticias-api
+    ports:
+      - "8001:8000"
+    environment:
+      APP_ENV: local
+      CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://localhost:8001,http://localhost:8002
+      CORS_ORIGIN_REGEX: https://.*(app\.github\.dev|githubpreview\.dev|vscode-cdn\.net|devtunnels\.ms)
+      LLM_PROVIDER: ${NOTICIAS_LLM_PROVIDER:-auto}
+      LLM_FALLBACK_ON_ERROR: ${NOTICIAS_LLM_FALLBACK_ON_ERROR:-true}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-llama-3.1-8b-instant}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      FACT_CHECK_API_KEY: ${FACT_CHECK_API_KEY:-}
+      GOOGLE_FACT_CHECK_API_KEY: ${GOOGLE_FACT_CHECK_API_KEY:-}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      GOOGLE_APPLICATION_CREDENTIALS: ${NOTICIAS_GOOGLE_APPLICATION_CREDENTIALS:-/run/secrets/noticias/base-mediahackii-dde4ddaa87de.json}
+      FIRESTORE_ANALYSES_COLLECTION: ${FIRESTORE_ANALYSES_COLLECTION:-contentAnalyses}
+      FIRESTORE_TRANSPORT: ${FIRESTORE_TRANSPORT:-rest}
+      GOOGLE_SEARCH_API_KEY: ${GOOGLE_SEARCH_API_KEY:-}
+      GOOGLE_SEARCH_CX: ${GOOGLE_SEARCH_CX:-}
+      GDELT_ENABLED: ${GDELT_ENABLED:-true}
+      GDELT_TIMESPAN: ${GDELT_TIMESPAN:-3months}
+      GDELT_MAX_RECORDS: ${GDELT_MAX_RECORDS:-10}
+      GDELT_QUERY_LIMIT: ${GDELT_QUERY_LIMIT:-5}
+      GDELT_TIMEOUT_SECONDS: ${GDELT_TIMEOUT_SECONDS:-5}
+      NEWS_RSS_ENABLED: ${NEWS_RSS_ENABLED:-true}
+      NEWS_RSS_QUERY_LIMIT: ${NEWS_RSS_QUERY_LIMIT:-3}
+      NEWS_RSS_TIMEOUT_SECONDS: ${NEWS_RSS_TIMEOUT_SECONDS:-6}
+      DUCKDUCKGO_FALLBACK_QUERY_LIMIT: ${DUCKDUCKGO_FALLBACK_QUERY_LIMIT:-4}
+      DUCKDUCKGO_TIMEOUT_SECONDS: ${DUCKDUCKGO_TIMEOUT_SECONDS:-4}
+      REQUEST_TIMEOUT_SECONDS: ${REQUEST_TIMEOUT_SECONDS:-12}
+      MAX_HTML_BYTES: ${MAX_HTML_BYTES:-2000000}
+      MAX_ARTICLE_CHARS: ${MAX_ARTICLE_CHARS:-24000}
+      RELATED_NEWS_LIMIT: ${RELATED_NEWS_LIMIT:-6}
+      RELATED_SOURCE_SEARCH_LIMIT: ${RELATED_SOURCE_SEARCH_LIMIT:-5}
+    volumes:
+      - ./BACK - 3/Noticias/secrets:/run/secrets/noticias:ro
+    restart: unless-stopped
+
+  video-audio-api:
+    build:
+      context: ./BACK - 3/Video-Audio
+    container_name: ama-lluia-video-audio-api
+    ports:
+      - "8002:8002"
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8002"
+      DEBUG: "false"
+      CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://localhost:8001,http://localhost:8002
+      CORS_ORIGIN_REGEX: https://.*(app\.github\.dev|githubpreview\.dev|vscode-cdn\.net|devtunnels\.ms)
+      TEMP_DIR: /app/temp
+      UPLOAD_DIR: /app/uploads
+      MAX_FILE_SIZE: ${MAX_FILE_SIZE:-52428800}
+      ALLOWED_AUDIO_FORMATS: ${ALLOWED_AUDIO_FORMATS:-mp3,wav,ogg,m4a,flac}
+      ALLOWED_VIDEO_FORMATS: ${ALLOWED_VIDEO_FORMATS:-mp4,avi,mov,mkv,webm}
+      AUDIO_CONFIDENCE_THRESHOLD: ${AUDIO_CONFIDENCE_THRESHOLD:-0.7}
+      VIDEO_CONFIDENCE_THRESHOLD: ${VIDEO_CONFIDENCE_THRESHOLD:-0.7}
+      GOOGLE_APPLICATION_CREDENTIALS: ${VIDEO_AUDIO_GOOGLE_APPLICATION_CREDENTIALS:-/run/secrets/video-audio/google-credentials.json}
+      GOOGLE_FACT_CHECK_API_KEY: ${GOOGLE_FACT_CHECK_API_KEY:-}
+      WHISPER_MODEL: ${WHISPER_MODEL:-base}
+      WHISPER_LANGUAGE: ${WHISPER_LANGUAGE:-es}
+      ENABLE_FACT_CHECKING: ${ENABLE_FACT_CHECKING:-true}
+      ENABLE_FAKE_NEWS_DETECTION: ${ENABLE_FAKE_NEWS_DETECTION:-true}
+      FAKE_NEWS_THRESHOLD: ${FAKE_NEWS_THRESHOLD:-0.7}
+    volumes:
+      - ./BACK - 3/Video-Audio/secrets:/run/secrets/video-audio:ro
+      - video_audio_temp:/app/temp
+      - video_audio_uploads:/app/uploads
+    restart: unless-stopped
+
+volumes:
+  video_audio_temp:
+  video_audio_uploads:

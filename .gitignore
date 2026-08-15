@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
 venv/
+.venv/
 __pycache__/
 *.pyc
 *.pyo
@@ -14,6 +15,10 @@ build/
 # Environment
 .env
 .env.local
+.env.docker
+secrets/
+*.pem
+*.key
 
 # IDE
 .vscode/
@@ -28,5 +33,6 @@ Thumbs.db
 # Temp files
 temp/
 uploads/
+out/
 *.tmp
 Secret/
