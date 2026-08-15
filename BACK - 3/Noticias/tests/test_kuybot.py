@@ -1,0 +1,22 @@
+from app.services.kuybot import _extract_official_sources, _infer_question_intent
+
+
+def test_infers_verification_intent_from_question() -> None:
+    intent = _infer_question_intent('¿Es verdad que el CNE confirmó fraude electoral?')
+    assert intent == 'verification'
+
+
+def test_extracts_official_sources_with_priority() -> None:
+    payload = {
+        'news': {
+            'related_news': [
+                {'title': 'El Comercio', 'url': 'https://www.elcomercio.com/', 'source': 'El Comercio', 'source_type': 'medio_radar'},
+                {'title': 'Comunicado CNE', 'url': 'https://www.cne.gob.ec/', 'source': 'CNE', 'source_type': 'gobierno'},
+                {'title': 'Primicias', 'url': 'https://www.primicias.ec/', 'source': 'Primicias', 'source_type': 'medio_nativo'},
+            ]
+        }
+    }
+
+    official = _extract_official_sources(payload)
+    assert official[0]['url'] == 'https://www.cne.gob.ec/'
+    assert any(item['source'] == 'CNE' for item in official)

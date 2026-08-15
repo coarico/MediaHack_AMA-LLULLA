@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import logo from './assets/logo.svg'
+import kuybotMascot from './assets/KUYBOT.png'
 import { analyzeAudio, analyzeVideo, analyzeMediaUrl } from './services/api'
 
 // ===== Paleta (tema claro) =====
@@ -47,10 +48,20 @@ function App() {
   const [analysisError, setAnalysisError] = useState('')
   const [mediaError, setMediaError] = useState('')
   const [messages, setMessages] = useState([
-    { role: 'bot', text: 'Hola. Soy el asistente de AMA-LLU-IA. Puedes preguntarme sobre verificación de contenido electoral.' }
+    { role: 'assistant', text: 'Hola. Soy Kuybot, tu asistente de investigación periodística. Estoy listo para ayudarte a contrastar esta noticia.' }
   ])
   const [inputMessage, setInputMessage] = useState('')
+  const [kuybotBusy, setKuybotBusy] = useState(false)
   const chatEndRef = useRef(null)
+
+  const kuybotSuggestions = [
+    '¿Esta información ha sido verificada?',
+    '¿Qué fuentes respaldan esta noticia?',
+    '¿Qué fuentes contradicen esta información?',
+    '¿Qué dicen las fuentes oficiales?',
+    '¿Existen verificaciones relacionadas?',
+    '¿Qué ocurrió realmente?'
+  ]
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -130,6 +141,105 @@ function App() {
 
   const apiBaseUrl = resolveApiBaseUrl()
 
+  const renderInlineText = (value) => {
+    const text = String(value || '')
+    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|\[.*?\]\(https?:\/\/[^)]+\))/g)
+
+    return parts.map((part, index) => {
+      if (!part) return null
+
+      const strongMatch = part.match(/^\*\*(.+)\*\*$/)
+      if (strongMatch) {
+        return <strong key={`${part}-${index}`} className="font-semibold" style={{ color: C.navy }}>{renderInlineText(strongMatch[1])}</strong>
+      }
+
+      const italicMatch = part.match(/^\*(.+)\*$/)
+      if (italicMatch) {
+        return <em key={`${part}-${index}`} className="italic" style={{ color: C.textPrimary }}>{renderInlineText(italicMatch[1])}</em>
+      }
+
+      const linkMatch = part.match(/^\[(.+?)\]\((https?:\/\/[^)]+)\)$/)
+      if (linkMatch) {
+        return (
+          <a
+            key={`${part}-${index}`}
+            href={linkMatch[2]}
+            target="_blank"
+            rel="noreferrer"
+            className="underline underline-offset-2 break-all"
+            style={{ color: C.navy }}
+          >
+            {linkMatch[1]}
+          </a>
+        )
+      }
+
+      return <span key={`${part}-${index}`}>{part}</span>
+    })
+  }
+
+  const normalizeMessageValue = (value) => {
+    const normalized = String(value || '')
+      .replace(/\u00A0/g, ' ')
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/(^|\n)\s*(?:#\s*){1,6}(?=\S)/g, '$1### ')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/\n[ \t]+/g, '\n')
+      .replace(/(^|\n)\s*[-*]\s+/g, '$1- ')
+      .replace(/(^|\n)\s*(\d+)\.\s+/g, '$1$2. ')
+
+    return normalized
+  }
+
+  const renderMessageText = (value) => {
+    const normalized = normalizeMessageValue(value)
+    const lines = normalized.split(/\n/)
+
+    return lines.map((line, index) => {
+      const trimmed = line.trim()
+
+      if (!trimmed) {
+        return <div key={`${index}-sp`} className="h-1.5" />
+      }
+
+      if (/^###\s+/.test(trimmed)) {
+        return (
+          <div key={`${index}-heading`} className="mt-2 mb-1 text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: C.navy }}>
+            {renderInlineText(trimmed.replace(/^###\s+/, ''))}
+          </div>
+        )
+      }
+
+      if (/^---$/.test(trimmed)) {
+        return <div key={`${index}-divider`} className="my-2 h-px w-full" style={{ backgroundColor: 'rgba(16,27,61,0.08)' }} />
+      }
+
+      if (/^[-*]\s+/.test(trimmed)) {
+        return (
+          <div key={`${index}-bullet`} className="mt-1 flex items-start gap-2">
+            <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: C.orange }} />
+            <span className="leading-relaxed">{renderInlineText(trimmed.replace(/^[-*]\s+/, ''))}</span>
+          </div>
+        )
+      }
+
+      if (/^\d+\.\s+/.test(trimmed)) {
+        return (
+          <div key={`${index}-list`} className="mt-1 flex items-start gap-2">
+            <span className="mt-0.5 font-semibold" style={{ color: C.orange }}>{trimmed.match(/^\d+\./)?.[0]}</span>
+            <span className="leading-relaxed">{renderInlineText(trimmed.replace(/^\d+\.\s+/, ''))}</span>
+          </div>
+        )
+      }
+
+      return (
+        <div key={`${index}-text`} className="mt-1 leading-relaxed">{renderInlineText(trimmed)}</div>
+      )
+    })
+  }
+
   const handleAnalyze = async () => {
     if (activeTab !== 'link' && activeView !== 'home') {
       setAnalyzing(true)
@@ -195,13 +305,56 @@ function App() {
     }
   }
 
-  const handleSendMessage = () => {
-    if (!inputMessage.trim()) return
-    setMessages(prev => [...prev,
-      { role: 'user', text: inputMessage },
-      { role: 'bot', text: 'Procesando tu consulta sobre verificación electoral. Un momento.' }
-    ])
+  const handleSendMessage = async () => {
+    const trimmed = inputMessage.trim()
+    if (!trimmed) return
+
+    const history = messages.map(msg => ({
+      role: msg.role === 'user' ? 'user' : 'assistant',
+      content: msg.text || msg.content || '',
+      text: msg.text || msg.content || '',
+      sources: Array.isArray(msg.sources) ? msg.sources : [],
+      created_at: new Date().toISOString()
+    }))
+
+    setMessages(prev => [...prev, { role: 'user', text: trimmed, sources: [] }])
     setInputMessage('')
+    setKuybotBusy(true)
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/v1/noticias/kuybot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: trimmed,
+          news: newsResult,
+          history,
+        })
+      })
+
+      const data = await response.json().catch(() => null)
+      if (!response.ok) {
+        throw new Error(data?.detail || 'No se pudo consultar a Kuybot.')
+      }
+
+      const answer = data?.answer || 'No recibí una respuesta útil del bot.'
+      const sources = Array.isArray(data?.sources) ? data.sources.filter(Boolean) : []
+      setMessages(prev => [...prev, { role: 'assistant', text: answer, sources }])
+    } catch (error) {
+      const messageText = error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : JSON.stringify(error)
+
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        text: `No pude completar la consulta. ${messageText || 'Revisa la conexión con el backend.'}`,
+        sources: []
+      }])
+    } finally {
+      setKuybotBusy(false)
+    }
   }
 
   const tabs = [
@@ -266,6 +419,57 @@ function App() {
     if (status === 'informacion_a_contrastar') return C.amber
     if (status === 'sin_respaldo_suficiente') return '#2563EB'
     return C.gray
+  }
+
+  const currentNewsContext = newsResult ? {
+    title: newsResult.article?.title || 'Noticia analizada',
+    summary: newsResult.analysis?.summary || 'Sin resumen disponible por el momento.',
+    platform: prettyValue(newsResult.editorial_metadata?.platform),
+    publisher: prettyValue(newsResult.content_attribution?.publisher_name || newsResult.source_verification?.source_name || newsResult.editorial_metadata?.publisher_type),
+    publicationDate: prettyValue(newsResult.editorial_metadata?.publication_date),
+    thematicAxis: prettyValue(newsResult.editorial_metadata?.thematic_axis || newsResult.information_relevance?.subtopics?.join(', ')),
+    auditLabel: prettyValue(newsResult.risk_assessment?.level || newsResult.audit?.priority || 'sin_dato'),
+    relatedSources: (newsResult.related_news || []).slice(0, 4).map(item => ({
+      name: item.source_name || item.source || 'Fuente relacionada',
+      url: item.url
+    }))
+  } : null
+
+  const buildKuybotReply = (question, analysis) => {
+    const lower = question.toLowerCase()
+    const title = analysis?.article?.title || 'la noticia actual'
+    const summary = analysis?.analysis?.summary || 'No hay un resumen claro disponible.'
+    const claims = analysis?.verifiable_claims?.map(item => item.claim).filter(Boolean) || []
+    const related = analysis?.related_news?.map(item => item.source_name || item.source || 'fuente relacionada').filter(Boolean) || []
+    const sources = related.length ? related.slice(0, 4).join(', ') : 'fuentes relacionadas y oficiales ya disponibles en la auditoría'
+
+    if (lower.includes('verificada') || lower.includes('verdad') || lower.includes('falso')) {
+      return `🟡 REQUIERE VERIFICACIÓN\n\nNo basta con una sola afirmación: la noticia debe contrastarse con fuentes oficiales y cobertura independiente. En este caso, el análisis actual de "${title}" indica que la historia requiere mayor contraste.\n\n¿Por qué?\n• El resumen sugiere que hay afirmaciones relevantes que requieren corroboración.\n• La auditoría ya marca la necesidad de verificar contexto y evidencia.\n• El contexto actual no sustituye una confirmación oficial.\n\nEVIDENCIA\n${summary}\n\nFUENTES CONSULTADAS\n${sources}\n\nNota: la ausencia de confirmación oficial no equivale a falsedad; simplemente indica que aún falta evidencia sólida.`
+    }
+
+    if (lower.includes('fuente') || lower.includes('respaldan') || lower.includes('apoyan')) {
+      return `📚 FUENTES QUE RESPALDAN EL CONTEXTO\n\nLa noticia actual presenta una base contextual con varias fuentes relevantes y cobertura relacionada. En esta sesión, el contexto de "${title}" ya incluye: ${sources}.\n\nAdemás, los datos actuales muestran que la historia está vinculada a afirmaciones verificables y a fuentes de contraste. Eso ayuda a evaluar si la noticia se sostiene o si requiere mayor corroboración.`
+    }
+
+    if (lower.includes('contradic') || lower.includes('lo contrario') || lower.includes('opuesto')) {
+      return `🟠 INFORMACIÓN CONTRADICTORIA\n\nEl análisis de la noticia no muestra una conclusión definitiva por sí solo. Lo apropiado es comparar lo que reporta la fuente principal con la cobertura relacionada y con fuentes oficiales.\n\nLa evidencia disponible sugiere que la historia puede tener varias versiones o interpretaciones, por lo que el usuario debe revisar si existen contradicciones entre medios, fuentes oficiales y verificadores antes de asumir una conclusión final.`
+    }
+
+    if (lower.includes('oficial') || lower.includes('cne') || lower.includes('fiscal') || lower.includes('presidencia')) {
+      return `🏛️ FUENTE OFICIAL\n\nLa investigación debe priorizar documentos, institucionales y declaraciones oficiales relacionadas con la noticia. En este caso, el contexto de la nota ya señala que hay que contrastar la información con autoridades o fuentes institucionales antes de cerrar una conclusión.\n\nLa clave es verificar si la afirmación depende directamente de la institución citada y si la fuente oficial confirma o desmiente el hecho reportado.`
+    }
+
+    if (lower.includes('verificado') || lower.includes('fact check') || lower.includes('chequea')) {
+      return `🔎 VERIFICACIÓN ESPECIALIZADA\n\nCuando una afirmación es verificable, conviene buscar comprobaciones previas y fuentes especializadas. El contexto de la noticia actual ya ofrece elementos para evaluar el tema, pero la verificación definitiva requiere contrastar con fuentes de fact-checking, oficiales y periodísticas.\n\nLa decisión no debe basarse en una sola verificación: se debe cruzar con evidencia, contexto, fechas y contradicciones.`
+    }
+
+    if (!analysis) {
+      return 'Primero necesito que se analice una noticia para contextualizar la investigación. Cuando la URL ya esté cargada, puedo comparar la afirmación con el resumen, las fuentes relacionadas y la auditoría existente.'
+    }
+
+    const claimText = claims[0] ? `La afirmación más relevante que aparece en este análisis es: "${claims[0]}".` : 'El análisis actual no mostró una afirmación clara, pero sí un resumen y varios indicadores de verificación.'
+
+    return `🧭 CONTEXTO DE INVESTIGACIÓN\n\nEstoy revisando la noticia: "${title}".\n\n${claimText}\n\nResumen del contexto:\n${summary}\n\nLo más útil aquí es separar hechos, interpretaciones y comentarios, luego contrastarlos con fuentes relacionadas y oficiales. El objetivo no es imponer una conclusión, sino mostrar qué está respaldado, qué está cuestionado y qué falta validar.`
   }
 
   return (
@@ -1232,58 +1436,208 @@ function App() {
       </div>
 
       {/* Floating Chat Button */}
-      <button
-        onClick={() => setChatOpen(!chatOpen)}
-        className="fixed bottom-5 right-5 rounded-full flex items-center justify-center transition-all z-50 shadow-lg"
-        style={{ width: '52px', height: '52px', backgroundColor: chatOpen ? C.navy : C.orange, color: '#FFFFFF' }}
-        aria-label={chatOpen ? 'Cerrar chat' : 'Abrir chat'}
-      >
-        {chatOpen ? <X className="w-5 h-5" /> : <MessageCircle className="w-5 h-5" />}
-      </button>
+      <div className="fixed bottom-5 right-5 flex flex-col items-center z-50">
+        {!chatOpen && (
+          <div
+            className="relative mb-3 px-3 py-2 rounded-2xl text-[10px] font-semibold shadow-lg"
+            style={{ backgroundColor: '#FFFFFF', color: C.navy, border: `1px solid ${C.border}`, boxShadow: '0 16px 30px rgba(16, 27, 61, 0.12)' }}
+          >
+            <span className="block leading-snug text-center">Soy Kuybot</span>
+            <span className="block leading-snug text-center" style={{ color: C.textMuted }}>Analicemos esta noticia juntos</span>
+            <span className="absolute left-1/2 -bottom-1.5 w-3 h-3 bg-white border-b border-r border-slate-200 transform -translate-x-1/2 rotate-45" />
+          </div>
+        )}
+        <button
+          onClick={() => setChatOpen(!chatOpen)}
+          className="rounded-full flex items-center justify-center transition-all overflow-visible"
+          style={{ width: '132px', height: '132px', background: 'transparent', boxShadow: 'none', border: 'none' }}
+          aria-label={chatOpen ? 'Cerrar chat' : 'Abrir Kuybot'}
+        >
+          {chatOpen ? (
+            <div className="w-[132px] h-[132px] rounded-full flex items-center justify-center" style={{ background: `radial-gradient(circle at 30% 30%, ${C.orange}, #0D132B 70%)`, boxShadow: '0 28px 50px rgba(245,130,43,0.4)' }}>
+              <X className="w-8 h-8 text-white" />
+            </div>
+          ) : (
+            <img src={kuybotMascot} alt="Kuybot" className="w-full h-full object-contain drop-shadow-[0_18px_30px_rgba(15,23,42,0.25)]" />
+          )}
+        </button>
+      </div>
 
       {/* Chat Panel */}
       {chatOpen && (
         <div
-          className="fixed bottom-20 right-5 w-[calc(100vw-2.5rem)] md:w-96 h-[420px] rounded-xl flex flex-col z-50 overflow-hidden shadow-xl"
-          style={card}
+          className="fixed bottom-24 right-5 w-[calc(100vw-1.5rem)] md:w-[420px] h-[520px] rounded-2xl flex flex-col z-50 overflow-hidden shadow-2xl"
+          style={{ backgroundColor: '#FFFFFF', border: `1px solid ${C.border}` }}
         >
-          <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: `1px solid ${C.border}`, backgroundColor: C.navy }}>
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: C.orange, animation: 'pulse-dot 2s ease-in-out infinite' }} />
-            <h3 className="font-semibold text-sm text-white">Bot — preguntas ciudadanas</h3>
+          <div className="px-4 py-3.5 flex items-center justify-between gap-3" style={{ background: `linear-gradient(135deg, ${C.navy}, ${C.navySoft})` }}>
+            <div className="flex items-center gap-2.5">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: C.orange, animation: 'pulse-dot 2s ease-in-out infinite' }} />
+              <div>
+                <h3 className="font-bold text-sm text-white">KUYBOT</h3>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-white/70">Asistente de investigación</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setChatOpen(false)}
+              className="rounded-full w-7 h-7 flex items-center justify-center"
+              style={{ backgroundColor: 'rgba(255,255,255,0.10)', color: '#FFFFFF' }}
+              aria-label="Cerrar Kuybot"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div className="flex-1 overflow-y-auto p-3.5 space-y-3.5" style={{ backgroundColor: '#F7F9FC' }}>
+            {currentNewsContext ? (
+              <div className="rounded-xl p-3.5" style={{ backgroundColor: '#FFFFFF', border: `1px solid ${C.border}` }}>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-[10px] font-mono uppercase tracking-[0.18em]" style={{ color: C.textFaint }}>Noticia en análisis</span>
+                  <span
+                    className="px-2 py-1 rounded-full text-[10px] font-bold uppercase"
+                    style={{ backgroundColor: C.amberSoft, color: C.amber, border: `1px solid ${C.amberSoft}` }}
+                  >
+                    {currentNewsContext.auditLabel}
+                  </span>
+                </div>
+                <p className="text-sm font-bold leading-snug" style={{ color: C.textPrimary }}>{currentNewsContext.title}</p>
+                <p className="text-[11px] leading-relaxed mt-2" style={{ color: C.textMuted }}>{currentNewsContext.summary.slice(0, 180)}{currentNewsContext.summary.length > 180 ? '…' : ''}</p>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-[10px]" style={{ color: C.textMuted }}>
+                  <div className="rounded-lg p-2" style={{ backgroundColor: C.bg }}>
+                    <span className="block font-mono uppercase mb-1" style={{ color: C.textFaint }}>Plataforma</span>
+                    {currentNewsContext.platform}
+                  </div>
+                  <div className="rounded-lg p-2" style={{ backgroundColor: C.bg }}>
+                    <span className="block font-mono uppercase mb-1" style={{ color: C.textFaint }}>Publicador</span>
+                    {currentNewsContext.publisher}
+                  </div>
+                  <div className="rounded-lg p-2" style={{ backgroundColor: C.bg }}>
+                    <span className="block font-mono uppercase mb-1" style={{ color: C.textFaint }}>Fecha</span>
+                    {currentNewsContext.publicationDate}
+                  </div>
+                  <div className="rounded-lg p-2" style={{ backgroundColor: C.bg }}>
+                    <span className="block font-mono uppercase mb-1" style={{ color: C.textFaint }}>Tema</span>
+                    {currentNewsContext.thematicAxis}
+                  </div>
+                </div>
+                {currentNewsContext.relatedSources.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-[10px] font-mono uppercase tracking-[0.18em] mb-2" style={{ color: C.textFaint }}>Fuentes relacionadas</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {currentNewsContext.relatedSources.map((item, idx) => (
+                        <a
+                          key={`${item.name}-${idx}`}
+                          href={item.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-2 py-1 rounded-full text-[10px] font-medium"
+                          style={{ backgroundColor: C.navyMuted, color: C.navy }}
+                        >
+                          {item.name}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-xl p-3.5" style={{ backgroundColor: '#FFFFFF', border: `1px solid ${C.border}` }}>
+                <p className="text-sm font-semibold" style={{ color: C.textPrimary }}>Sin noticia activa</p>
+                <p className="text-[11px] mt-1" style={{ color: C.textMuted }}>Analiza una URL para que Kuybot cargue automáticamente el contexto periodístico.</p>
+              </div>
+            )}
+
+            <div className="rounded-xl p-2.5" style={{ backgroundColor: '#FFFFFF', border: `1px solid ${C.border}` }}>
+              <p className="text-[10px] font-mono uppercase tracking-[0.18em] mb-2" style={{ color: C.textFaint }}>Preguntas rápidas</p>
+              <div className="flex flex-wrap gap-2">
+                {kuybotSuggestions.map((suggestion, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setInputMessage(suggestion)}
+                    className="px-2.5 py-1.5 rounded-full text-[10px] font-medium text-left"
+                    style={{ backgroundColor: C.orangeSoft, color: C.navy, border: `1px solid ${C.orangeSoft}` }}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {messages.map((msg, idx) => (
               <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className="max-w-[80%] px-3.5 py-2.5 rounded-lg text-sm leading-relaxed"
+                  className="max-w-[82%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm"
                   style={
                     msg.role === 'user'
-                      ? { backgroundColor: C.orange, color: '#FFFFFF', fontWeight: 500 }
-                      : { backgroundColor: C.bg, color: C.textPrimary, border: `1px solid ${C.border}` }
+                      ? { background: `linear-gradient(135deg, ${C.orange}, #FF9D4D)`, color: '#FFFFFF', fontWeight: 600 }
+                      : { backgroundColor: '#FFFFFF', color: C.textPrimary, border: `1px solid ${C.border}` }
                   }
                 >
-                  {msg.text}
+                  <div className="space-y-0.5">
+                    {renderMessageText(msg.text)}
+                  </div>
+
+                  {msg.sources && msg.sources.length > 0 && (
+                    <div className="mt-3 pt-2 border-t" style={{ borderColor: 'rgba(16,27,61,0.08)' }}>
+                      <div className="text-[10px] font-mono uppercase tracking-[0.18em] mb-2" style={{ color: C.textFaint }}>Bibliografía</div>
+                      <div className="space-y-1.5">
+                        {msg.sources.slice(0, 6).map((source, idx) => {
+                          let hostname = ''
+                          try {
+                            hostname = new URL(source).hostname.replace('www.', '')
+                          } catch {
+                            hostname = source
+                          }
+
+                          return (
+                            <a
+                              key={`${source}-${idx}`}
+                              href={source}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block text-[10px] leading-relaxed break-all underline-offset-2"
+                              style={{ color: C.navy }}
+                            >
+                              <span className="font-semibold">{hostname}</span>
+                              <span className="opacity-80"> — {source}</span>
+                            </a>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
+
+            {kuybotBusy && (
+              <div className="flex justify-start">
+                <div className="max-w-[82%] px-3 py-2.5 rounded-2xl text-sm" style={{ backgroundColor: '#FFFFFF', border: `1px solid ${C.border}` }}>
+                  <div className="flex items-center gap-2 text-xs" style={{ color: C.textMuted }}>
+                    <Activity className="w-3.5 h-3.5 animate-spin" />
+                    Kuybot está revisando el contexto...
+                  </div>
+                </div>
+              </div>
+            )}
             <div ref={chatEndRef} />
           </div>
 
-          <div className="p-3" style={{ borderTop: `1px solid ${C.border}` }}>
+          <div className="p-3" style={{ borderTop: `1px solid ${C.border}`, backgroundColor: '#FFFFFF' }}>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={inputMessage}
                 onChange={e => setInputMessage(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-                placeholder="Escribe tu pregunta..."
-                className="flex-1 px-3 py-2.5 rounded-lg text-sm focus:outline-none"
+                placeholder="Investiga esta noticia conmigo..."
+                className="flex-1 px-3 py-2.5 rounded-xl text-sm focus:outline-none"
                 style={{ backgroundColor: C.bg, border: `1px solid ${C.border}`, color: C.textPrimary }}
+                disabled={kuybotBusy}
               />
               <button
                 onClick={handleSendMessage}
-                className="px-3 py-2.5 rounded-lg transition-all flex items-center justify-center"
+                disabled={kuybotBusy || !inputMessage.trim()}
+                className="px-3 py-2.5 rounded-xl transition-all flex items-center justify-center disabled:opacity-50"
                 style={{ backgroundColor: C.orange, color: '#FFFFFF' }}
                 aria-label="Enviar mensaje"
               >

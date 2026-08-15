@@ -14,41 +14,50 @@ async def search_related_news(analysis: NewsAnalysis, original_url: str) -> list
     seen_urls = {original_url}
 
     if not settings.google_search_api_key or not settings.google_search_cx:
-        for query in queries[:3]:
-            for item in _search_public_web(query):
-                if item.url in seen_urls:
-                    continue
-                seen_urls.add(item.url)
-                results.append(item)
-                if len(results) >= settings.related_news_limit:
-                    return results
-        return results
+        return _search_public_related_news(queries, seen_urls, results)
 
     import httpx
 
-    async with httpx.AsyncClient(timeout=10) as client:
-        for query in queries[:3]:
-            response = await client.get(
-                "https://www.googleapis.com/customsearch/v1",
-                params={
-                    "key": settings.google_search_api_key,
-                    "cx": settings.google_search_cx,
-                    "q": query,
-                    "num": min(settings.related_news_limit, 10),
-                },
-            )
-            response.raise_for_status()
-            payload = response.json()
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            for query in queries[:3]:
+                response = await client.get(
+                    "https://www.googleapis.com/customsearch/v1",
+                    params={
+                        "key": settings.google_search_api_key,
+                        "cx": settings.google_search_cx,
+                        "q": query,
+                        "num": min(settings.related_news_limit, 10),
+                    },
+                )
+                response.raise_for_status()
+                payload = response.json()
 
-            for item in payload.get("items", []):
-                url = item.get("link")
-                if not url or url in seen_urls:
-                    continue
-                seen_urls.add(url)
-                results.append(_build_related_item(item.get("title") or "Sin titulo", url, item.get("snippet"), query))
-                if len(results) >= settings.related_news_limit:
-                    return results
+                for item in payload.get("items", []):
+                    url = item.get("link")
+                    if not url or url in seen_urls:
+                        continue
+                    seen_urls.add(url)
+                    results.append(_build_related_item(item.get("title") or "Sin titulo", url, item.get("snippet"), query))
+                    if len(results) >= settings.related_news_limit:
+                        return results
+    except Exception:
+        return _search_public_related_news(queries, seen_urls, results)
 
+    if results:
+        return results
+    return _search_public_related_news(queries, seen_urls, results)
+
+
+def _search_public_related_news(queries: list[str], seen_urls: set[str], results: list[RelatedNewsItem]) -> list[RelatedNewsItem]:
+    for query in queries[:3]:
+        for item in _search_public_web(query):
+            if item.url in seen_urls:
+                continue
+            seen_urls.add(item.url)
+            results.append(item)
+            if len(results) >= settings.related_news_limit:
+                return results
     return results
 
 

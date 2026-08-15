@@ -341,3 +341,46 @@ class AnalysisListItem(BaseModel):
     risk_level: str | None = None
     audit_priority: str | None = None
     created_at: datetime | None = None
+
+
+class KuybotMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = ""
+    sources: list[str] = Field(default_factory=list)
+    created_at: datetime | None = None
+    text: str | None = None
+
+    @classmethod
+    def model_validate(cls, obj, *args, **kwargs):
+        if isinstance(obj, dict):
+            role = obj.get("role")
+            if role == "bot":
+                obj = {**obj, "role": "assistant"}
+            if "content" not in obj and "text" in obj:
+                obj = {**obj, "content": obj["text"]}
+            if "text" not in obj and "content" in obj:
+                obj = {**obj, "text": obj["content"]}
+        return super().model_validate(obj, *args, **kwargs)
+
+
+class KuybotRequest(BaseModel):
+    question: str
+    news: dict | None = None
+    history: list[KuybotMessage] = Field(default_factory=list)
+
+
+class KuybotFactCheckItem(BaseModel):
+    text: str | None = None
+    claimant: str | None = None
+    publisher: str | None = None
+    review_date: str | None = None
+    url: str | None = None
+    language_code: str | None = None
+
+
+class KuybotResponse(BaseModel):
+    answer: str
+    sources: list[str] = Field(default_factory=list)
+    fact_check: list[KuybotFactCheckItem] = Field(default_factory=list)
+    mode: Literal["gemini", "fallback"] = "fallback"
+    status: Literal["ok", "error"] = "ok"

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 
 from app.core.security import UnsafeUrlError, validate_public_http_url
-from app.schemas.news import AnalysisListItem, AnalyzeRequest, AnalyzeResponse, SourceInput
+from app.schemas.news import AnalysisListItem, AnalyzeRequest, AnalyzeResponse, KuybotRequest, KuybotResponse, SourceInput
 from app.services.ai_analyzer import analyze_article
 from app.services.article_extractor import ExtractionError, extract_article
 from app.services.article_fetcher import FetchError, fetch_html
@@ -13,6 +13,7 @@ from app.services.cross_source import build_cross_source_check
 from app.services.editorial_metadata import build_editorial_metadata
 from app.services.firestore_store import new_analysis_id, now_utc, store
 from app.services.information_relevance import classify_information_relevance
+from app.services.kuybot import ask_kuybot
 from app.services.related_search import search_related_news
 from app.services.source_classifier import classify_source
 from app.services.source_verification import build_source_verification
@@ -100,6 +101,14 @@ async def get_analysis(analysis_id: str) -> dict:
     if not result:
         raise HTTPException(status_code=404, detail="Analisis no encontrado.")
     return result
+
+
+@router.post("/kuybot", response_model=KuybotResponse)
+async def ask_news_kuybot(request: KuybotRequest) -> KuybotResponse:
+    try:
+        return await ask_kuybot(request.question, request.news, [message.model_dump(mode="json") for message in request.history])
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Error generando respuesta de Kuybot: {exc}") from exc
 
 
 @router.get("/analysis", response_model=list[AnalysisListItem])

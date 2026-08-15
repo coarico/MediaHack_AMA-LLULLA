@@ -27,6 +27,9 @@ class Settings:
     cors_origin_regex: str | None = None
     openai_api_key: str | None = None
     openai_model: str = "gpt-4o-mini"
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-3.5-flash"
+    fact_check_api_key: str | None = None
     firebase_project_id: str | None = None
     firebase_credentials_path: str | None = None
     firestore_collection: str = "contentAnalyses"
@@ -51,6 +54,9 @@ def get_settings() -> Settings:
         cors_origin_regex=os.getenv("CORS_ORIGIN_REGEX") or None,
         openai_api_key=os.getenv("OPENAI_API_KEY") or None,
         openai_model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        gemini_api_key=os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or None,
+        gemini_model=os.getenv("GEMINI_MODEL", "gemini-3.5-flash"),
+        fact_check_api_key=os.getenv("FACT_CHECK_API_KEY") or os.getenv("GOOGLE_FACT_CHECK_API_KEY") or None,
         firebase_project_id=os.getenv("FIREBASE_PROJECT_ID") or None,
         firebase_credentials_path=os.getenv("GOOGLE_APPLICATION_CREDENTIALS") or None,
         firestore_collection=os.getenv("FIRESTORE_ANALYSES_COLLECTION", "contentAnalyses"),
