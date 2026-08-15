@@ -14,8 +14,12 @@ class ExtractionError(RuntimeError):
 def extract_article(url: str, html_content: str) -> ExtractedArticle:
     extracted = _extract_with_trafilatura(url, html_content) or _extract_with_fallback(html_content)
     text = (extracted.get("text") or "").strip()
-    if len(text) < _minimum_text_length(url):
-        raise ExtractionError("La noticia tiene muy poco contenido para analizarla bien.")
+    minimum_text_length = _minimum_text_length(url)
+    if len(text) < minimum_text_length:
+        source_hint = "red social" if minimum_text_length == 80 else "sitio web"
+        raise ExtractionError(
+            f"No hay texto suficiente para analizar: se requieren al menos {minimum_text_length} caracteres en {source_hint}."
+        )
 
     parsed = urlparse(url)
     return ExtractedArticle(
