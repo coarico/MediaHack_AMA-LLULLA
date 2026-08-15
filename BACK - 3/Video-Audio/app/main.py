@@ -235,7 +235,9 @@ async def perform_content_analysis(file_path: str, is_video: bool = False, sourc
             'fact_checking': fact_checking,
             'extracted_claims': extracted_claims,
             'web_context': web_context,
-            'llm_analysis': llm_analysis
+            'llm_analysis': llm_analysis,
+            'llm_verdict': llm_analysis.get('veredicto') if llm_analysis else None,
+            'llm_confidence': llm_analysis.get('confianza') if llm_analysis else None,
         }
         
     except Exception as e:
@@ -249,6 +251,31 @@ async def perform_content_analysis(file_path: str, is_video: bool = False, sourc
             'web_context': None,
             'llm_analysis': None
         }
+
+
+def _combine_verdicts(result, content_analysis_dict):
+    """Combine video/audio analyzer verdict with LLM verdict"""
+    llm_verdict = content_analysis_dict.get('llm_verdict', '').upper() if content_analysis_dict else ''
+    llm_confidence = content_analysis_dict.get('llm_confidence', 0) if content_analysis_dict else 0
+    
+    if not llm_verdict:
+        return
+    
+    # LLM says FALSO or likely AI-generated
+    if llm_verdict in ['FALSO', 'FALSIFICADO', 'ENGAÑOSO', 'IA_GENERADO']:
+        # Override: LLM detected it's fake/AI even if video metrics didn't
+        if not result.is_ai_generated:
+            print(f"🔧 LLM override: marking as AI-generated (LLM verdict: {llm_verdict}, {llm_confidence}%)")
+            result.is_ai_generated = True
+            # Blend confidence: weight LLM confidence more if video said real
+            llm_conf = llm_confidence / 100.0 if llm_confidence > 1 else llm_confidence
+            result.confidence = max(result.confidence, llm_conf * 0.7 + 0.3)
+    elif llm_verdict in ['AUTÉNTICO', 'VERDADERO', 'REAL'] and llm_confidence >= 80:
+        # LLM is very confident it's real, boost the real score
+        if not result.is_ai_generated:
+            llm_conf = llm_confidence / 100.0 if llm_confidence > 1 else llm_confidence
+            result.confidence = min(result.confidence * 0.7 + llm_conf * 0.3, 0.95)
+            print(f"🔧 LLM boost: confidence adjusted to {result.confidence:.2f} (LLM: {llm_verdict}, {llm_confidence}%)")
 
 
 @app.exception_handler(Exception)
@@ -313,6 +340,9 @@ async def analyze_audio_file(
             if content_analysis_dict.get('fake_news'):
                 result.is_misinformation = content_analysis_dict['fake_news'].get('is_fake_news', False)
             
+            # Combine verdicts: video metrics + LLM
+            _combine_verdicts(result, content_analysis_dict)
+            
             # Calculate processing time
             processing_time = time.time() - start_time
             result.processing_time = processing_time
@@ -376,6 +406,9 @@ async def analyze_video_file(
             # Update manipulation and misinformation flags
             if content_analysis_dict.get('fake_news'):
                 result.is_misinformation = content_analysis_dict['fake_news'].get('is_fake_news', False)
+
+            # Combine verdicts: video metrics + LLM
+            _combine_verdicts(result, content_analysis_dict)
 
             # Calculate processing time
             processing_time = time.time() - start_time
@@ -455,6 +488,9 @@ async def analyze_from_url(request: AudioAnalysisRequest):
             # Update manipulation and misinformation flags
             if content_analysis_dict.get('fake_news'):
                 result.is_misinformation = content_analysis_dict['fake_news'].get('is_fake_news', False)
+            
+            # Combine verdicts: video/audio metrics + LLM
+            _combine_verdicts(result, content_analysis_dict)
             
             processing_time = time.time() - start_time
             result.processing_time = processing_time
