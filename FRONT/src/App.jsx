@@ -14,6 +14,8 @@ function App() {
   const [activeTab, setActiveTab] = useState('link')
   const [chatOpen, setChatOpen] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [progressLabel, setProgressLabel] = useState('')
   const [urlValue, setUrlValue] = useState('')
   const [videoUrl, setVideoUrl] = useState('')
   const [selectedFile, setSelectedFile] = useState(null)
@@ -73,8 +75,28 @@ function App() {
 
   const handleAnalyze = async () => {
     setAnalyzing(true)
+    setProgress(0)
+    setProgressLabel('Iniciando...')
     setError(null)
     setAnalysisResult(null)
+
+    // Simulated exponential progress that approaches 90% while waiting for API
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 90) return prev
+        // Exponential approach: slows down as it gets closer to 90
+        const remaining = 90 - prev
+        const increment = Math.max(remaining * 0.08, 0.5)
+        const next = prev + increment
+        if (next < 20) setProgressLabel('Descargando contenido...')
+        else if (next < 35) setProgressLabel('Extrayendo audio...')
+        else if (next < 55) setProgressLabel('Transcribiendo...')
+        else if (next < 70) setProgressLabel('Analizando con IA...')
+        else if (next < 85) setProgressLabel('Verificando fuentes...')
+        else setProgressLabel('Generando reporte...')
+        return next
+      })
+    }, 400)
 
     try {
       let result
@@ -97,6 +119,8 @@ function App() {
         throw new Error('Por favor ingresa una URL o selecciona un archivo')
       }
 
+      setProgress(100)
+      setProgressLabel('Completado')
       setAnalysisResult(result)
 
       // Registrar en el historial real (localStorage) para Auditor y Home
@@ -118,7 +142,9 @@ function App() {
       setError(err.message || 'Error al procesar el análisis')
       console.error('Error al analizar:', err)
     } finally {
+      clearInterval(progressInterval)
       setAnalyzing(false)
+      setTimeout(() => { setProgress(0); setProgressLabel('') }, 500)
     }
   }
 
@@ -734,7 +760,7 @@ function App() {
                     {analyzing ? (
                       <>
                         <Activity className="w-4 h-4 animate-spin" />
-                        Analizando señal...
+                        Analizando... {progress.toFixed(0)}%
                       </>
                     ) : (
                       <>
@@ -743,6 +769,17 @@ function App() {
                       </>
                     )}
                   </button>
+                  {analyzing && (
+                    <div className="mt-3">
+                      <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#E9ECEF' }}>
+                        <div className="h-full rounded-full transition-all duration-300" style={{
+                          width: `${progress}%`,
+                          backgroundColor: BRAND_ORANGE
+                        }} />
+                      </div>
+                      <p className="text-xs text-center mt-1.5 text-gray-600">{progressLabel}</p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -818,7 +855,7 @@ function App() {
                     {analyzing ? (
                       <>
                         <Activity className="w-4 h-4 animate-spin" />
-                        Analizando señal...
+                        Analizando... {progress.toFixed(0)}%
                       </>
                     ) : (
                       <>
@@ -827,6 +864,18 @@ function App() {
                       </>
                     )}
                   </button>
+
+                  {analyzing && (
+                    <div className="mt-3">
+                      <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#16234E' }}>
+                        <div className="h-full rounded-full transition-all duration-300" style={{
+                          width: `${progress}%`,
+                          backgroundColor: BRAND_ORANGE
+                        }} />
+                      </div>
+                      <p className="text-xs text-center mt-1.5" style={{ color: '#7A8290' }}>{progressLabel}</p>
+                    </div>
+                  )}
 
                   {/* Resultados del análisis */}
                   {analysisResult && (() => {
@@ -1014,12 +1063,25 @@ function App() {
                         </div>
                       )}
 
-                      {/* ===== TRANSCRIPCIÓN + VERIFICACIÓN ===== */}
+                      {/* ===== TRANSCRIPCIÓN COMPLETA ===== */}
                       {analysisResult.content_analysis?.has_transcription && analysisResult.content_analysis?.transcription?.text && (
                         <div className="rounded-xl border p-5" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
                           <div className="flex items-center gap-2 mb-4">
                             <div className="w-1 h-5 rounded-full" style={{ backgroundColor: BRAND_ORANGE }} />
-                            <h4 className="text-sm font-bold text-gray-900 tracking-wide">TRANSCRIPCIÓN + VERIFICACIÓN</h4>
+                            <h4 className="text-sm font-bold text-gray-900 tracking-wide">TRANSCRIPCIÓN COMPLETA</h4>
+                          </div>
+                          <p className="text-sm leading-relaxed text-gray-700" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                            {analysisResult.content_analysis.transcription.text}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* ===== VERIFICACIÓN POR SEGMENTOS ===== */}
+                      {analysisResult.content_analysis?.has_transcription && (segVs.length > 0 || segs.length > 0) && (
+                        <div className="rounded-xl border p-5" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
+                          <div className="flex items-center gap-2 mb-4">
+                            <div className="w-1 h-5 rounded-full" style={{ backgroundColor: BRAND_ORANGE }} />
+                            <h4 className="text-sm font-bold text-gray-900 tracking-wide">VERIFICACIÓN POR SEGMENTOS</h4>
                           </div>
                           <div className="space-y-3">
                             {segVs.length > 0 ? segVs.slice(0, 6).map((seg, idx) => {
@@ -1063,12 +1125,7 @@ function App() {
                                   </div>
                                 </div>
                               )
-                            }) || (
-                              <div className="flex gap-3 pb-3">
-                                <span className="text-xs font-mono font-bold flex-shrink-0" style={{ color: BRAND_ORANGE }}>00:00</span>
-                                <p className="text-sm leading-relaxed text-gray-900">{analysisResult.content_analysis.transcription.text}</p>
-                              </div>
-                            )}
+                            })}
                           </div>
                         </div>
                       )}
