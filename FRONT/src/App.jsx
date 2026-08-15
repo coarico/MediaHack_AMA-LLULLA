@@ -895,16 +895,45 @@ function App() {
                     }
                     const pc = platformConfig[sm?.platform] || platformConfig['Generic']
 
-                    // Extract YouTube video ID for embed
-                    const ytMatch = sm?.source_url?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n]+)/)
+                    // Extract video ID for embed based on platform
+                    const sourceUrl = sm?.source_url || ''
+                    const ytMatch = sourceUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n]+)/)
                     const ytId = ytMatch ? ytMatch[1] : null
+
+                    // TikTok embed
+                    const tiktokMatch = sourceUrl.match(/tiktok\.com\/@[\w.-]+\/video\/(\d+)/)
+                    const tiktokId = tiktokMatch ? tiktokMatch[1] : null
+
+                    // Instagram embed (post ID from URL)
+                    const igMatch = sourceUrl.match(/instagram\.com\/(?:p|reel)\/([^/?]+)/)
+                    const igId = igMatch ? igMatch[1] : null
+
+                    // Facebook embed
+                    const fbMatch = sourceUrl.match(/facebook\.com\/(?:watch\/?\?v=|[\w.]+\/videos\/)(\d+)/)
+                    const fbId = fbMatch ? fbMatch[1] : null
+
+                    // Twitter/X embed
+                    const twMatch = sourceUrl.match(/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/)
+                    const twId = twMatch ? twMatch[1] : null
+
+                    // Vimeo embed
+                    const vimeoMatch = sourceUrl.match(/vimeo\.com\/(\d+)/)
+                    const vimeoId = vimeoMatch ? vimeoMatch[1] : null
+
+                    // Determine embed type
+                    const embedType = ytId ? 'youtube' :
+                      tiktokId ? 'tiktok' :
+                      igId ? 'instagram' :
+                      fbId ? 'facebook' :
+                      twId ? 'twitter' :
+                      vimeoId ? 'vimeo' : null
 
                     return (
                     <div className="mt-6 space-y-4">
                       {/* ===== VIDEO PLAYER + FUENTE ORIGINAL ===== */}
                       <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E9ECEF' }}>
                         {/* Video player - full-width */}
-                        {ytId ? (
+                        {embedType === 'youtube' && (
                           <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
                             <iframe
                               className="absolute top-0 left-0 w-full h-full"
@@ -915,7 +944,68 @@ function App() {
                               allowFullScreen
                             />
                           </div>
-                        ) : (
+                        )}
+                        {embedType === 'tiktok' && (
+                          <div className="w-full flex items-center justify-center" style={{ backgroundColor: '#000000', minHeight: '500px' }}>
+                            <iframe
+                              src={`https://www.tiktok.com/embed/v2/${tiktokId}`}
+                              title="TikTok player"
+                              frameBorder="0"
+                              allow="encrypted-media; picture-in-picture"
+                              allowFullScreen
+                              style={{ width: '100%', height: '500px', border: 'none' }}
+                            />
+                          </div>
+                        )}
+                        {embedType === 'instagram' && (
+                          <div className="w-full flex items-center justify-center" style={{ backgroundColor: '#000000', minHeight: '600px' }}>
+                            <iframe
+                              src={`https://www.instagram.com/p/${igId}/embed`}
+                              title="Instagram player"
+                              frameBorder="0"
+                              allow="encrypted-media; picture-in-picture"
+                              allowFullScreen
+                              style={{ width: '100%', maxWidth: '400px', height: '600px', border: 'none' }}
+                            />
+                          </div>
+                        )}
+                        {embedType === 'facebook' && (
+                          <div className="w-full flex items-center justify-center" style={{ backgroundColor: '#000000', minHeight: '500px' }}>
+                            <iframe
+                              src={`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(sourceUrl)}&show_text=false&width=560`}
+                              title="Facebook player"
+                              frameBorder="0"
+                              allow="encrypted-media; picture-in-picture; autoplay; clipboard-write"
+                              allowFullScreen
+                              style={{ width: '100%', height: '500px', border: 'none' }}
+                            />
+                          </div>
+                        )}
+                        {embedType === 'twitter' && (
+                          <div className="w-full flex items-center justify-center" style={{ backgroundColor: '#000000', minHeight: '400px' }}>
+                            <iframe
+                              src={`https://platform.twitter.com/embed/Tweet.html?id=${twId}`}
+                              title="Twitter player"
+                              frameBorder="0"
+                              allow="encrypted-media; picture-in-picture"
+                              allowFullScreen
+                              style={{ width: '100%', maxWidth: '550px', height: '400px', border: 'none' }}
+                            />
+                          </div>
+                        )}
+                        {embedType === 'vimeo' && (
+                          <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                            <iframe
+                              className="absolute top-0 left-0 w-full h-full"
+                              src={`https://player.vimeo.com/video/${vimeoId}`}
+                              title="Vimeo player"
+                              frameBorder="0"
+                              allow="autoplay; fullscreen; picture-in-picture"
+                              allowFullScreen
+                            />
+                          </div>
+                        )}
+                        {!embedType && (
                           <div className="w-full flex items-center justify-center" style={{ backgroundColor: '#F8F9FA', height: '400px' }}>
                             <div className="text-center">
                               <div className="w-20 h-20 rounded-xl mx-auto flex items-center justify-center mb-3" style={{ backgroundColor: pc.bg }}>
