@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     groq_model: str = "llama-3.3-70b-versatile"
     
+    # yt-dlp options
+    ytdlp_proxy_url: str = ""
+    ytdlp_cookies_file: str = ""
+
     # Firebase Firestore
     firebase_credentials_path: str = "./Secret/base-mediahackii-dde4ddaa87de.json"
     firebase_project_id: str = "base-mediahackii"

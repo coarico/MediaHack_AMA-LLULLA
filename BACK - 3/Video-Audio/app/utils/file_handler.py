@@ -165,73 +165,92 @@ class FileHandler:
         # Get ffmpeg binary from imageio-ffmpeg
         ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
         
-        ydl_opts = {
+        # Base options shared across all attempts
+        base_opts = {
             'format': 'best[ext=mp4][height<=720]/best[height<=720]/best',
             'outtmpl': output_template,
             'quiet': True,
             'no_warnings': True,
             'ffmpeg_location': ffmpeg_path,
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['android', 'web'],
-                }
-            },
             'http_headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                 'Accept-Language': 'en-US,en;q=0.5',
-                'Referer': 'https://www.tiktok.com/',
             },
         }
-        
+
+        # Optional proxy
+        if settings.ytdlp_proxy_url:
+            base_opts['proxy'] = settings.ytdlp_proxy_url
+            print(f"🌐 Using proxy for yt-dlp: {settings.ytdlp_proxy_url[:20]}...")
+
+        # Optional cookies file
+        if settings.ytdlp_cookies_file:
+            cookie_path = Path(settings.ytdlp_cookies_file)
+            if cookie_path.exists():
+                base_opts['cookiefile'] = str(cookie_path)
+                print(f"🍪 Using cookies file for yt-dlp")
+
+        # Try different client strategies for YouTube anti-bot bypass
+        client_strategies = [
+            {'player_client': ['ios', 'android']},
+            {'player_client': ['android', 'web']},
+            {'player_client': ['web_safari', 'default']},
+        ]
+
+        last_error = None
+        for i, strategy in enumerate(client_strategies):
+            ydl_opts = {**base_opts, 'extractor_args': {'youtube': strategy}}
+            try:
+                print(f"🔄 yt-dlp attempt {i+1}/{len(client_strategies)} (client={strategy['player_client']})")
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                    filename = ydl.prepare_filename(info)
+                    downloaded_path = Path(filename)
+                    
+                    extractor = info.get('extractor_key', 'Unknown')
+                    metadata = {
+                        'source_url': url,
+                        'title': info.get('title', ''),
+                        'channel': info.get('channel', '') or info.get('uploader', ''),
+                        'channel_id': info.get('channel_id', ''),
+                        'uploader': info.get('uploader', ''),
+                        'upload_date': info.get('upload_date', ''),
+                        'description': info.get('description', ''),
+                        'view_count': info.get('view_count', 0),
+                        'like_count': info.get('like_count', 0),
+                        'duration': info.get('duration', 0),
+                        'is_verified': info.get('channel_is_verified', False),
+                        'platform': extractor,
+                        'thumbnail': info.get('thumbnail', ''),
+                        'thumbnails': info.get('thumbnails', [])
+                    }
+
+                self._validate_video_file(downloaded_path)
+                return downloaded_path, metadata
+            except yt_dlp.utils.DownloadError as e:
+                last_error = e
+                print(f"⚠️ Attempt {i+1} failed: {str(e)[:100]}")
+                continue
+            except Exception as e:
+                last_error = e
+                print(f"⚠️ Attempt {i+1} unexpected error: {str(e)[:100]}")
+                continue
+
+        # All yt-dlp strategies failed, try fallback
+        print(f"🔄 All yt-dlp strategies failed, trying fallback methods...")
         try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                filename = ydl.prepare_filename(info)
-                downloaded_path = Path(filename)
-                
-                # Detect platform from extractor
-                extractor = info.get('extractor_key', 'Unknown')
-                
-                # Extract metadata (works across platforms)
-                metadata = {
-                    'source_url': url,
-                    'title': info.get('title', ''),
-                    'channel': info.get('channel', '') or info.get('uploader', ''),
-                    'channel_id': info.get('channel_id', ''),
-                    'uploader': info.get('uploader', ''),
-                    'upload_date': info.get('upload_date', ''),
-                    'description': info.get('description', ''),
-                    'view_count': info.get('view_count', 0),
-                    'like_count': info.get('like_count', 0),
-                    'duration': info.get('duration', 0),
-                    'is_verified': info.get('channel_is_verified', False),
-                    'platform': extractor,
-                    'thumbnail': info.get('thumbnail', ''),
-                    'thumbnails': info.get('thumbnails', [])
-                }
+            result = await self._download_fallback(url)
+            if result:
+                return result
+        except Exception as fallback_err:
+            print(f"⚠️ Fallback also failed: {fallback_err}")
 
-            self._validate_video_file(downloaded_path)
-            return downloaded_path, metadata
-        except yt_dlp.utils.DownloadError as e:
-            # Fallback: try alternative methods based on platform
-            print(f"🔄 yt-dlp failed, trying alternative download methods...")
-            if self._is_tiktok_url(url):
-                try:
-                    result = await self._download_fallback(url)
-                    if result:
-                        return result
-                except Exception as fallback_err:
-                    print(f"⚠️ All fallback methods failed: {fallback_err}")
-
-            if self._is_youtube_url(url):
-                raise ValueError(
-                    "YouTube bloqueó la descarga automática (anti-bot). "
-                    "Prueba otro enlace, sube el archivo manualmente o usa un proxy/cookies para yt-dlp."
-                )
-            raise ValueError(f"No se pudo descargar el video de esta plataforma. Intenta con YouTube u otra URL. ({str(e)[:80]})")
-        except Exception as e:
-            raise ValueError(f"Error al descargar: {str(e)[:100]}")
+        error_msg = str(last_error)[:120] if last_error else "unknown error"
+        raise ValueError(
+            f"No se pudo descargar el video. yt-dlp agotó todos los intentos ({error_msg}). "
+            f"Configura YTDLP_PROXY_URL o YTDLP_COOKIES_FILE en Railway para bypass anti-bot."
+        )
     
     async def _download_fallback(self, url: str) -> tuple[Path, dict]:
         """Fallback download for any platform when yt-dlp fails"""
@@ -241,9 +260,6 @@ class FileHandler:
         # Detect platform
         is_tiktok = self._is_tiktok_url(url)
         platform = 'TikTok' if is_tiktok else 'Unknown'
-
-        if not is_tiktok:
-            raise ValueError("Fallback solo disponible para enlaces de TikTok")
         
         async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
             download_url = None
@@ -284,6 +300,12 @@ class FileHandler:
                     metadata['channel'] = author.get('nickname', '')
                 metadata['duration'] = float(video_data.get('duration', 0))
                 metadata['view_count'] = int(video_data.get('play_count', 0))
+            else:
+                # For other platforms, try direct download
+                print("🔄 Trying direct HTTP download...")
+                download_url = url
+                metadata['title'] = url.split('/')[-1][:50]
+            
             # Download the video file
             unique_id = str(uuid.uuid4())
             output_path = self.temp_dir / f"{unique_id}.mp4"
