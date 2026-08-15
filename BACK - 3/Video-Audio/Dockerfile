@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+# Keep this layer tied to the backend image so Railway watch paths trigger rebuilds.
 # Upgrade pip and install build dependencies
 RUN pip install --upgrade pip setuptools==80.9.0 wheel
 
