@@ -104,7 +104,10 @@ class FileHandler:
             Exception: If download fails
         """
         if settings.download_provider.lower() == "external":
-            return await self._download_with_external_worker(url)
+            try:
+                return await self._download_with_external_worker(url)
+            except Exception as external_err:
+                print(f"⚠️ External download provider failed, falling back to local: {external_err}")
 
         # Platforms supported by yt-dlp
         yt_dlp_platforms = [
