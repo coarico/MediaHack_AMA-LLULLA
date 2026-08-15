@@ -187,7 +187,7 @@ Si no coincide, lo clasifica como `medio_no_radar`, `red_social`, `blog`, `gobie
 
 ## Fuentes De Conocimiento Para La IA
 
-Los archivos de conocimiento viajan con el backend. Coloca los `.csv` y `.pdf` en:
+Los archivos de conocimiento viajan con el backend. Coloca los `.csv`, `.ods` y `.pdf` en:
 
 ```txt
 data/knowledge_sources/

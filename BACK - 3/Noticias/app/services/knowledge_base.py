@@ -4,10 +4,15 @@ from functools import lru_cache
 from pathlib import Path
 
 from app.core.config import settings
-from app.services.knowledge_ingestion import KnowledgeChunk, ingest_csv_to_chunks, ingest_pdf_to_chunks
+from app.services.knowledge_ingestion import (
+    KnowledgeChunk,
+    ingest_csv_to_chunks,
+    ingest_ods_to_chunks,
+    ingest_pdf_to_chunks,
+)
 
 
-SUPPORTED_EXTENSIONS = {".csv", ".pdf"}
+SUPPORTED_EXTENSIONS = {".csv", ".ods", ".pdf"}
 
 
 def find_relevant_knowledge(query_text: str, limit: int | None = None) -> list[dict]:
@@ -53,6 +58,8 @@ def load_knowledge_chunks() -> tuple[KnowledgeChunk, ...]:
         try:
             if path.suffix.lower() == ".csv":
                 chunks.extend(ingest_csv_to_chunks(path, source_id=source_id))
+            elif path.suffix.lower() == ".ods":
+                chunks.extend(ingest_ods_to_chunks(path, source_id=source_id))
             elif path.suffix.lower() == ".pdf":
                 chunks.extend(ingest_pdf_to_chunks(path, source_id=source_id))
         except Exception as exc:

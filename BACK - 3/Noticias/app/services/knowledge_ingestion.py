@@ -118,6 +118,44 @@ def ingest_pdf_to_chunks(
     return chunks
 
 
+def ingest_ods_to_chunks(
+    ods_path: str | Path,
+    source_id: str,
+    chunk_size: int = 1200,
+    overlap: int = 160,
+) -> list[KnowledgeChunk]:
+    path = Path(ods_path)
+    if not path.exists():
+        raise FileNotFoundError(f"No existe el ODS: {path}")
+
+    rows = _extract_ods_rows(path)
+    chunks: list[KnowledgeChunk] = []
+    for row_index, row in enumerate(rows):
+        text = " | ".join(value for value in row if value)
+        if len(text) < 20:
+            continue
+        title = row[0] if row else path.stem
+        metadata = {
+            "source_file": path.name,
+            "row_index": row_index,
+            "raw": row,
+        }
+        for chunk_index, chunk_text in enumerate(_chunk_text(text, chunk_size=chunk_size, overlap=overlap)):
+            chunk_id = _stable_id(source_id, row_index, chunk_index, chunk_text)
+            chunks.append(
+                KnowledgeChunk(
+                    id=chunk_id,
+                    source_id=source_id,
+                    chunk_index=chunk_index,
+                    title=title,
+                    text=chunk_text,
+                    keywords=_extract_keywords(chunk_text),
+                    metadata=metadata,
+                )
+            )
+    return chunks
+
+
 def write_chunks_jsonl(chunks: list[KnowledgeChunk], output_path: str | Path) -> None:
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -139,6 +177,34 @@ def _extract_pdf_pages(path: Path) -> list[str]:
     if not any(page.strip() for page in pages):
         raise ValueError("No se pudo extraer texto del PDF. Puede ser escaneado/imagen.")
     return pages
+
+
+def _extract_ods_rows(path: Path) -> list[list[str]]:
+    try:
+        from odf.opendocument import load
+        from odf.table import Table, TableCell, TableRow
+        from odf.text import P
+    except ImportError as exc:
+        raise RuntimeError("Para subir ODS instala odfpy en requirements.txt.") from exc
+
+    document = load(str(path))
+    rows: list[list[str]] = []
+    for table in document.spreadsheet.getElementsByType(Table):
+        for row in table.getElementsByType(TableRow):
+            values: list[str] = []
+            for cell in row.getElementsByType(TableCell):
+                repeat = int(cell.getAttribute("numbercolumnsrepeated") or 1)
+                text = " ".join(
+                    str(node.firstChild.data)
+                    for node in cell.getElementsByType(P)
+                    if node.firstChild
+                ).strip()
+                values.extend([text] * min(repeat, 20))
+            if any(values):
+                rows.append(values)
+    if not rows:
+        raise ValueError("No se pudo extraer texto del ODS.")
+    return rows
 
 
 def _pick_text(row: dict[str, str], text_columns: list[str]) -> str:
