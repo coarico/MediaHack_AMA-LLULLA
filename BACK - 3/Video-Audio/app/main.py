@@ -18,6 +18,8 @@ from app.services.transcription_service import TranscriptionService
 from app.services.deepgram_service import DeepgramTranscriptionService
 from app.services.content_analyzer import ContentAnalyzer
 from app.services.fact_checker import FactChecker
+from app.services.web_searcher import WebSearcher
+from app.services.llm_analyzer import LLMAnalyzer
 from app.utils.file_handler import FileHandler
 from app.services.firebase_service import save_analysis_to_firestore
 
@@ -46,24 +48,30 @@ transcription_service = TranscriptionService()
 deepgram_service = DeepgramTranscriptionService()
 content_analyzer = ContentAnalyzer()
 fact_checker = FactChecker()
+web_searcher = WebSearcher()
+llm_analyzer = LLMAnalyzer()
 file_handler = FileHandler()
 
 
-async def perform_content_analysis(file_path: str, is_video: bool = False) -> dict:
+async def perform_content_analysis(file_path: str, is_video: bool = False, source_metadata: dict = None, skip_transcription: bool = False) -> dict:
     """
-    Perform complete content analysis: transcription, fake news, fact-checking
-    Each transcription segment is fact-checked individually.
+    Perform complete content analysis: transcription, fake news, fact-checking,
+    web search, and LLM analysis.
     
     Args:
         file_path: Path to media file
         is_video: Whether the file is a video
+        source_metadata: Optional metadata from URL (title, channel, etc.)
+        skip_transcription: Skip transcription if True
         
     Returns:
         dict: Content analysis results
     """
     try:
         # Transcription
-        if is_video:
+        if skip_transcription:
+            transcription = {'text': '', 'language': 'es', 'segments': []}
+        elif is_video:
             transcription = await transcription_service.transcribe_video(file_path)
         else:
             transcription = await transcription_service.transcribe(file_path)
@@ -74,7 +82,7 @@ async def perform_content_analysis(file_path: str, is_video: bool = False) -> di
         # o como doble verificacion (si la principal funciono). No afecta el
         # flujo si DEEPGRAM_API_KEY no esta configurada.
         deepgram_backup = None
-        if settings.deepgram_api_key:
+        if settings.deepgram_api_key and not skip_transcription:
             try:
                 if is_video:
                     deepgram_backup = await deepgram_service.transcribe_video(file_path)
@@ -94,7 +102,9 @@ async def perform_content_analysis(file_path: str, is_video: bool = False) -> di
                 'transcription': None,
                 'fake_news': None,
                 'fact_checking': None,
-                'extracted_claims': []
+                'extracted_claims': [],
+                'web_context': None,
+                'llm_analysis': None
             }
         
         # Content analysis
@@ -111,11 +121,14 @@ async def perform_content_analysis(file_path: str, is_video: bool = False) -> di
         segment_verifications = []
         
         if segments:
-            print(f"🔍 Fact-checking {min(len(segments), 6)} segments...")
-            for idx, segment in enumerate(segments[:6]):
+            seg_count = min(len(segments), 3)
+            print(f"🔍 Fact-checking {seg_count} segments...")
+            for idx, segment in enumerate(segments[:3]):
                 seg_text = segment.get('text', '').strip()
-                if len(seg_text) < 10:
+                if len(seg_text) < 20:
                     continue
+                # Truncate to 80 chars for Google Fact Check API limit
+                seg_text = seg_text[:80]
                 
                 # Check this segment with Google Fact Check
                 seg_result = await fact_checker.check_claim(seg_text)
@@ -162,12 +175,63 @@ async def perform_content_analysis(file_path: str, is_video: bool = False) -> di
         if deepgram_backup and deepgram_backup.get('text') and transcription is not deepgram_backup:
             transcription['deepgram_backup'] = deepgram_backup
 
+        # Web search for related sources
+        print("🌐 Searching web for related sources...")
+        web_context = None
+        try:
+            # Build search query from title or transcription
+            if source_metadata and source_metadata.get('title'):
+                search_query = source_metadata['title']
+            else:
+                # Use first 200 chars of transcription as query
+                search_query = text[:200].strip()
+            
+            articles = await web_searcher.search_news(search_query, max_results=8)
+            
+            # If no news results, try general search
+            if not articles:
+                print("📰 News search empty, trying general search...")
+                articles = await web_searcher.search_general(search_query, max_results=8)
+            
+            print(f"📰 Total articles found: {len(articles)}")
+            
+            # Cross-reference with reliable sources
+            cross_ref = web_searcher._cross_reference(text, articles)
+            
+            web_context = {
+                'articles': articles,
+                'total_articles_found': len(articles),
+                'cross_reference': cross_ref
+            }
+        except Exception as e:
+            print(f"⚠️ Web search failed: {e}")
+            web_context = None
+
+        # LLM Analysis
+        print("🤖 Running LLM analysis...")
+        llm_analysis = None
+        try:
+            title = source_metadata.get('title', '') if source_metadata else ''
+            channel = source_metadata.get('channel', '') if source_metadata else ''
+            llm_analysis = await llm_analyzer.analyze_transcription(
+                transcription=text,
+                title=title,
+                channel=channel,
+                web_articles=web_context.get('articles', []) if web_context else None
+            )
+            if llm_analysis:
+                print(f"✅ LLM verdict: {llm_analysis.get('veredicto', 'N/A')}")
+        except Exception as e:
+            print(f"⚠️ LLM analysis failed: {e}")
+
         return {
             'has_transcription': True,
             'transcription': transcription,
             'fake_news': fake_news,
             'fact_checking': fact_checking,
-            'extracted_claims': extracted_claims
+            'extracted_claims': extracted_claims,
+            'web_context': web_context,
+            'llm_analysis': llm_analysis
         }
         
     except Exception as e:
@@ -177,7 +241,9 @@ async def perform_content_analysis(file_path: str, is_video: bool = False) -> di
             'transcription': None,
             'fake_news': None,
             'fact_checking': None,
-            'extracted_claims': []
+            'extracted_claims': [],
+            'web_context': None,
+            'llm_analysis': None
         }
 
 
@@ -378,7 +444,7 @@ async def analyze_from_url(request: AudioAnalysisRequest):
                 result.metadata.source_metadata = source_metadata
             
             # Perform content analysis
-            content_analysis_dict = await perform_content_analysis(temp_path, is_video=is_video)
+            content_analysis_dict = await perform_content_analysis(temp_path, is_video=is_video, source_metadata=source_metadata, skip_transcription=request.skip_transcription if hasattr(request, 'skip_transcription') else False)
             from app.models.schemas import ContentAnalysisResult
             result.content_analysis = ContentAnalysisResult(**content_analysis_dict)
             

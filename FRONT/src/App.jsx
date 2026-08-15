@@ -1103,6 +1103,230 @@ function App() {
                         </div>
                       )}
 
+                      {/* ===== DETECCIÓN DE IA ===== */}
+                      {analysisResult.analysis_type === 'video' && analysisResult.video_details && (
+                        <div className="rounded-xl border p-5" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
+                          <div className="flex items-center gap-2 mb-4">
+                            <div className="w-1 h-5 rounded-full" style={{ backgroundColor: analysisResult.is_ai_generated ? '#E85D5D' : '#00C896' }} />
+                            <h4 className="text-sm font-bold text-gray-900 tracking-wide">DETECCIÓN DE IA (VIDEO)</h4>
+                            <span className="text-xs px-2 py-0.5 rounded-full" style={{
+                              backgroundColor: analysisResult.is_ai_generated ? '#E85D5D20' : '#00C89620',
+                              color: analysisResult.is_ai_generated ? '#E85D5D' : '#00C896'
+                            }}>
+                              {(() => {
+                                const isAI = analysisResult.is_ai_generated
+                                const confidence = analysisResult.confidence
+                                const aiScore = isAI ? Math.round(confidence * 100) : Math.round((1 - confidence) * 100)
+                                return isAI ? `${aiScore}% IA` : `${aiScore}% Auténtico`
+                              })()}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-3">
+                            {[
+                              { label: 'Consistencia facial', value: analysisResult.video_details.facial_consistency },
+                              { label: 'Artefactos de frame', value: analysisResult.video_details.frame_artifacts },
+                              { label: 'Anomalías de compresión', value: analysisResult.video_details.compression_anomalies }
+                            ].filter(m => m.value !== null && m.value !== undefined).map((m, i) => {
+                              const pct = Math.round(m.value * 100)
+                              const isHigh = pct > 60
+                              const color = isHigh ? '#E85D5D' : pct > 30 ? '#E8A33D' : '#00C896'
+                              return (
+                                <div key={i} className="rounded-lg p-3" style={{ backgroundColor: '#FFFFFF' }}>
+                                  <p className="text-xs text-gray-600 mb-1">{m.label}</p>
+                                  <div className="text-lg font-bold font-mono" style={{ color }}>{pct}%</div>
+                                  <div className="h-1.5 rounded-full mt-1.5 overflow-hidden" style={{ backgroundColor: '#E9ECEF' }}>
+                                    <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {analysisResult.analysis_type === 'audio' && analysisResult.audio_details && (
+                        <div className="rounded-xl border p-5" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
+                          <div className="flex items-center gap-2 mb-4">
+                            <div className="w-1 h-5 rounded-full" style={{ backgroundColor: analysisResult.is_ai_generated ? '#E85D5D' : '#00C896' }} />
+                            <h4 className="text-sm font-bold text-gray-900 tracking-wide">DETECCIÓN DE IA (AUDIO)</h4>
+                          </div>
+                          <div className="grid grid-cols-3 gap-3">
+                            {[
+                              { label: 'Análisis espectral', value: analysisResult.audio_details.spectral_score },
+                              { label: 'Consistencia de pitch', value: analysisResult.audio_details.pitch_consistency },
+                              { label: 'Ruido artificial', value: analysisResult.audio_details.noise_detection }
+                            ].map((m, i) => {
+                              const pct = Math.round(m.value * 100)
+                              const isHigh = pct > 60
+                              const color = isHigh ? '#E85D5D' : pct > 30 ? '#E8A33D' : '#00C896'
+                              return (
+                                <div key={i} className="rounded-lg p-3" style={{ backgroundColor: '#FFFFFF' }}>
+                                  <p className="text-xs text-gray-600 mb-1">{m.label}</p>
+                                  <div className="text-lg font-bold font-mono" style={{ color }}>{pct}%</div>
+                                  <div className="h-1.5 rounded-full mt-1.5 overflow-hidden" style={{ backgroundColor: '#E9ECEF' }}>
+                                    <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ===== ANÁLISIS LLM ===== */}
+                      {analysisResult.content_analysis?.llm_analysis && (() => {
+                        const llm = analysisResult.content_analysis.llm_analysis
+                        const verdictColor = llm.veredicto === 'AUTÉNTICO' ? '#00C896' :
+                          llm.veredicto === 'FALSO' ? '#E85D5D' :
+                          llm.veredicto === 'ENGAÑOSO' ? '#E8A33D' : '#3B82F6'
+                        return (
+                          <div className="rounded-xl border p-5" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
+                            <div className="flex items-center gap-2 mb-4">
+                              <div className="w-1 h-5 rounded-full" style={{ backgroundColor: BRAND_ORANGE }} />
+                              <h4 className="text-sm font-bold text-gray-900 tracking-wide">ANÁLISIS CON IA</h4>
+                              {llm.veredicto && (
+                                <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ backgroundColor: verdictColor + '20', color: verdictColor }}>
+                                  {llm.veredicto}
+                                </span>
+                              )}
+                              {llm.confianza !== undefined && (
+                                <span className="text-xs font-mono text-gray-600">{llm.confianza}% confianza</span>
+                              )}
+                            </div>
+                            {llm.resumen && (
+                              <p className="text-sm leading-relaxed text-gray-700 mb-3">{llm.resumen}</p>
+                            )}
+                            {llm.tema_principal && (
+                              <div className="mb-2">
+                                <span className="text-xs font-mono text-gray-600">Tema: </span>
+                                <span className="text-xs font-semibold text-gray-900">{llm.tema_principal}</span>
+                              </div>
+                            )}
+                            {llm.contexto_politico && (
+                              <div className="mb-2">
+                                <span className="text-xs font-mono text-gray-600">Contexto: </span>
+                                <span className="text-xs text-gray-700">{llm.contexto_politico}</span>
+                              </div>
+                            )}
+                            {llm.afirmaciones_clave && llm.afirmaciones_clave.length > 0 && (
+                              <div className="mt-3">
+                                <p className="text-xs font-mono text-gray-600 mb-1.5">Afirmaciones clave:</p>
+                                <ul className="space-y-1">
+                                  {llm.afirmaciones_clave.slice(0, 5).map((claim, i) => (
+                                    <li key={i} className="text-xs text-gray-700 flex items-start gap-2">
+                                      <span className="font-mono font-bold flex-shrink-0" style={{ color: BRAND_ORANGE }}>{i + 1}.</span>
+                                      <span>{claim}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {llm.observaciones && (
+                              <div className="mt-3 rounded-lg p-3" style={{ backgroundColor: '#FFFFFF' }}>
+                                <p className="text-xs text-gray-600 mb-1">Observaciones:</p>
+                                <p className="text-xs leading-relaxed text-gray-700">{llm.observaciones}</p>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
+
+                      {/* ===== FUENTES CONSULTADAS ===== */}
+                      {analysisResult.content_analysis?.web_context?.articles?.length > 0 && (() => {
+                        const articles = analysisResult.content_analysis.web_context.articles
+                        const crossRef = analysisResult.content_analysis.web_context.cross_reference
+                        const matchingArticles = crossRef?.matching_articles || []
+                        return (
+                          <div className="rounded-xl border p-5" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
+                            <div className="flex items-center gap-2 mb-4">
+                              <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#3B82F6' }} />
+                              <h4 className="text-sm font-bold text-gray-900 tracking-wide">FUENTES CONSULTADAS</h4>
+                              <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: '#3B82F620', color: '#3B82F6' }}>
+                                {articles.length} fuentes
+                              </span>
+                            </div>
+                            <div className="space-y-2">
+                              {articles.slice(0, 8).map((article, idx) => {
+                                const isReliable = matchingArticles.some(m => m.url === article.url && m.is_reliable)
+                                return (
+                                  <a
+                                    key={idx}
+                                    href={article.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block rounded-lg p-3 transition-all hover:shadow-sm"
+                                    style={{
+                                      backgroundColor: '#FFFFFF',
+                                      border: isReliable ? '1px solid #00C89640' : '1px solid #E9ECEF'
+                                    }}
+                                  >
+                                    <div className="flex items-start justify-between gap-2 mb-1">
+                                      <p className="text-xs font-semibold text-gray-900 flex-1">{article.title}</p>
+                                      {isReliable && (
+                                        <span className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded flex-shrink-0" style={{ backgroundColor: '#00C89620', color: '#00C896' }}>
+                                          <CheckCircle2 className="w-3 h-3" /> Confiable
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs text-gray-600">
+                                      <span>{article.source}</span>
+                                      {article.date && <span>· {article.date}</span>}
+                                    </div>
+                                    {article.snippet && (
+                                      <p className="text-xs text-gray-600 mt-1 line-clamp-2">{article.snippet}</p>
+                                    )}
+                                  </a>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )
+                      })()}
+
+                      {/* ===== VIDEOS RELACIONADOS ===== */}
+                      {(() => {
+                        const sm = analysisResult.metadata?.source_metadata
+                        const llm = analysisResult.content_analysis?.llm_analysis
+                        const webArticles = analysisResult.content_analysis?.web_context?.articles || []
+                        const videoTitle = sm?.title || analysisResult.metadata?.filename || 'contenido analizado'
+                        const channel = sm?.channel || ''
+                        const llmTopic = llm?.tema_principal || ''
+                        const llmContext = llm?.contexto_politico || ''
+                        const searchTopic = llmTopic ? `${llmTopic} ${llmContext}`.trim() : videoTitle
+                        const searchBase = 'https://www.google.com/search?q='
+                        const relatedVideos = [
+                          { title: llmTopic ? `${llmTopic} - análisis` : `${videoTitle} - análisis`, url: `${searchBase}${encodeURIComponent(searchTopic + ' análisis')}`, source: webArticles[0]?.source || '' },
+                          { title: channel ? `Más de ${channel}` : (llmTopic ? `Más sobre ${llmTopic}` : 'Videos del mismo tema'), url: `${searchBase}${encodeURIComponent(channel || searchTopic)}`, source: webArticles[1]?.source || '' },
+                          { title: 'Verificación de hechos', url: `${searchBase}${encodeURIComponent(searchTopic + ' verificación fact check')}`, source: webArticles[2]?.source || '' }
+                        ]
+                        return (
+                          <div className="rounded-xl border p-5" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
+                            <div className="flex items-center gap-2 mb-4">
+                              <div className="w-1 h-5 rounded-full" style={{ backgroundColor: BRAND_ORANGE }} />
+                              <h4 className="text-sm font-bold text-gray-900 tracking-wide">VIDEOS RELACIONADOS</h4>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                              {relatedVideos.map((v, i) => (
+                                <a
+                                  key={i}
+                                  href={v.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block rounded-lg p-3 transition-all hover:shadow-sm"
+                                  style={{ backgroundColor: '#FFFFFF', border: '1px solid #E9ECEF' }}
+                                >
+                                  <div className="w-full h-24 rounded mb-2 flex items-center justify-center" style={{ backgroundColor: '#101B3D' }}>
+                                    <Search className="w-6 h-6" style={{ color: '#7A8290' }} />
+                                  </div>
+                                  <p className="text-xs font-semibold text-gray-900 line-clamp-2">{v.title}</p>
+                                  {v.source && <p className="text-xs text-gray-600 mt-1">{v.source}</p>}
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      })()}
+
                       {/* ===== INFO TÉCNICA ===== */}
                       <div className="rounded-xl border p-4" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
                         <div className="flex items-center gap-2 mb-3">
