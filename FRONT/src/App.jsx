@@ -1295,6 +1295,12 @@ function App() {
                                 <p className="text-xs leading-relaxed text-gray-700">{llm.observaciones}</p>
                               </div>
                             )}
+                            {llm.indicios_ia && llm.indicios_ia !== 'No se detectaron indicios' && (
+                              <div className="mt-2 rounded-lg p-3" style={{ backgroundColor: '#E85D5D10', border: '1px solid #E85D5D30' }}>
+                                <p className="text-xs font-bold mb-1" style={{ color: '#E85D5D' }}>⚠ Indicios de generación por IA:</p>
+                                <p className="text-xs leading-relaxed" style={{ color: '#E85D5D' }}>{llm.indicios_ia}</p>
+                              </div>
+                            )}
                           </div>
                         )
                       })()}
