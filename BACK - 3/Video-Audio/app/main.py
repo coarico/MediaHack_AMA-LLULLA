@@ -19,6 +19,7 @@ from app.services.deepgram_service import DeepgramTranscriptionService
 from app.services.content_analyzer import ContentAnalyzer
 from app.services.fact_checker import FactChecker
 from app.utils.file_handler import FileHandler
+from app.services.firebase_service import save_analysis_to_firestore
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -246,6 +247,15 @@ async def analyze_audio_file(
             processing_time = time.time() - start_time
             result.processing_time = processing_time
             
+            # Save to Firestore
+            try:
+                result_dict = result.model_dump()
+                result_dict['processing_time'] = processing_time
+                result_dict['metadata'] = {**result_dict.get('metadata', {}), 'filename': file.filename}
+                save_analysis_to_firestore(result_dict)
+            except Exception as fs_err:
+                print(f"⚠️ Firestore save failed (non-blocking): {fs_err}")
+            
             return result
             
         finally:
@@ -300,6 +310,15 @@ async def analyze_video_file(
             # Calculate processing time
             processing_time = time.time() - start_time
             result.processing_time = processing_time
+
+            # Save to Firestore
+            try:
+                result_dict = result.model_dump()
+                result_dict['processing_time'] = processing_time
+                result_dict['metadata'] = {**result_dict.get('metadata', {}), 'filename': file.filename}
+                save_analysis_to_firestore(result_dict)
+            except Exception as fs_err:
+                print(f"⚠️ Firestore save failed (non-blocking): {fs_err}")
 
             return result
 
@@ -369,6 +388,14 @@ async def analyze_from_url(request: AudioAnalysisRequest):
             
             processing_time = time.time() - start_time
             result.processing_time = processing_time
+            
+            # Save to Firestore with source metadata
+            try:
+                result_dict = result.model_dump()
+                result_dict['processing_time'] = processing_time
+                save_analysis_to_firestore(result_dict, source_metadata=source_metadata)
+            except Exception as fs_err:
+                print(f"⚠️ Firestore save failed (non-blocking): {fs_err}")
             
             return result
             
