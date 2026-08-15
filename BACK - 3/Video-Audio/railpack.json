@@ -1,11 +1,14 @@
 {
   "$schema": "https://schema.railpack.com",
   "provider": "python",
+  "packages": {
+    "python": "3.11"
+  },
   "buildAptPackages": ["...", "build-essential", "gcc", "g++"],
   "steps": {
     "install": {
       "commands": [
-        "pip install \"setuptools<81\" wheel",
+        "pip install 'setuptools<81' wheel",
         "pip install --no-build-isolation openai-whisper==20231117",
         "pip install -r requirements.txt"
       ]
