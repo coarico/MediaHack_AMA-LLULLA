@@ -211,83 +211,99 @@ class FileHandler:
                 
             return Path(filename), metadata
         except yt_dlp.utils.DownloadError as e:
-            # If TikTok, try cobalt.tools fallback
-            if 'tiktok.com' in url:
-                print("🔄 yt-dlp failed for TikTok, trying cobalt.tools fallback...")
-                try:
-                    result = await self._download_with_cobalt(url)
-                    if result:
-                        return result
-                except Exception as cobalt_err:
-                    print(f"⚠️ Cobalt fallback also failed: {cobalt_err}")
-            raise ValueError(f"No se pudo descargar el video de TikTok. La plataforma bloquea las descargas. Intenta con YouTube u otra URL. ({str(e)[:80]})")
+            # Fallback: try alternative methods based on platform
+            print(f"🔄 yt-dlp failed, trying alternative download methods...")
+            try:
+                result = await self._download_fallback(url)
+                if result:
+                    return result
+            except Exception as fallback_err:
+                print(f"⚠️ All fallback methods failed: {fallback_err}")
+            raise ValueError(f"No se pudo descargar el video de esta plataforma. Intenta con YouTube u otra URL. ({str(e)[:80]})")
         except Exception as e:
             raise ValueError(f"Error al descargar: {str(e)[:100]}")
     
-    async def _download_with_cobalt(self, url: str) -> tuple[Path, dict]:
-        """Fallback download using cobalt.tools API for TikTok"""
+    async def _download_fallback(self, url: str) -> tuple[Path, dict]:
+        """Fallback download for any platform when yt-dlp fails"""
         import httpx
         import imageio_ffmpeg
         
-        api_url = "https://api.cobalt.tools/api/json"
-        headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-        }
-        payload = {
-            "url": url,
-            "vQuality": "720p",
-        }
+        # Detect platform
+        is_tiktok = 'tiktok.com' in url
+        platform = 'TikTok' if is_tiktok else 'Unknown'
         
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-            response = await client.post(api_url, json=payload, headers=headers)
-            data = response.json()
-            
-            if data.get("status") != "stream" and data.get("status") != "redirect":
-                raise ValueError(f"Cobalt returned: {data.get('status', 'unknown')}")
-            
-            stream_url = data.get("url")
-            if not stream_url:
-                raise ValueError("Cobalt: no download URL in response")
-            
-            # Download the stream
-            unique_id = str(uuid.uuid4())
-            output_path = self.temp_dir / f"{unique_id}.mp4"
-            
-            video_response = await client.get(stream_url)
-            if video_response.status_code != 200:
-                raise ValueError(f"Cobalt download failed: HTTP {video_response.status_code}")
-            
-            output_path.write_bytes(video_response.content)
-            
-            # Get video duration with ffprobe
-            ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
-            try:
-                import subprocess
-                probe = subprocess.run(
-                    [ffmpeg_path.replace('ffmpeg', 'ffprobe'), '-v', 'quiet', '-print_format', 'json', '-show_format', str(output_path)],
-                    capture_output=True, text=True, timeout=10
-                )
-                duration = 0.0
-                if probe.returncode == 0:
-                    import json as _json
-                    fmt = _json.loads(probe.stdout).get('format', {})
-                    duration = float(fmt.get('duration', 0))
-            except:
-                duration = 0.0
-            
+        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+            download_url = None
             metadata = {
-                'title': 'TikTok Video',
+                'title': 'Video',
                 'channel': '',
                 'source_url': url,
-                'platform': 'TikTok',
-                'duration': duration,
+                'platform': platform,
+                'duration': 0.0,
                 'view_count': 0,
                 'upload_date': '',
                 'is_verified': False,
             }
             
-            print(f"✅ Cobalt download successful: {output_path.name}")
+            if is_tiktok:
+                # Use tikwm.com API for TikTok
+                print("🔄 Trying tikwm.com for TikTok...")
+                response = await client.get("https://www.tikwm.com/api/", params={'url': url})
+                data = response.json()
+                
+                if data.get('code') != 0:
+                    raise ValueError(f"tikwm: {data.get('msg', 'error')}")
+                
+                video_data = data.get('data', {})
+                download_url = video_data.get('play') or video_data.get('wmplay')
+                if not download_url:
+                    raise ValueError("tikwm: no video URL")
+                
+                # Fix URL format
+                if download_url.startswith('//'):
+                    download_url = 'https:' + download_url
+                elif not download_url.startswith('http'):
+                    download_url = 'https://www.tikwm.com' + download_url
+                
+                metadata['title'] = video_data.get('title', 'TikTok Video')
+                author = video_data.get('author')
+                if isinstance(author, dict):
+                    metadata['channel'] = author.get('nickname', '')
+                metadata['duration'] = float(video_data.get('duration', 0))
+                metadata['view_count'] = int(video_data.get('play_count', 0))
+            else:
+                # For other platforms, try direct download
+                print("🔄 Trying direct HTTP download...")
+                download_url = url
+                metadata['title'] = url.split('/')[-1][:50]
+            
+            # Download the video file
+            unique_id = str(uuid.uuid4())
+            output_path = self.temp_dir / f"{unique_id}.mp4"
+            
+            video_response = await client.get(download_url)
+            if video_response.status_code != 200:
+                raise ValueError(f"Download failed: HTTP {video_response.status_code}")
+            
+            output_path.write_bytes(video_response.content)
+            
+            # Get duration with ffprobe
+            ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+            try:
+                import subprocess
+                import json as _json
+                ffprobe_path = ffmpeg_path.replace('ffmpeg-win-x86_64', 'ffprobe-win-x86_64').replace('ffmpeg.exe', 'ffprobe.exe')
+                probe = subprocess.run(
+                    [ffprobe_path, '-v', 'quiet', '-print_format', 'json', '-show_format', str(output_path)],
+                    capture_output=True, text=True, timeout=10
+                )
+                if probe.returncode == 0:
+                    fmt = _json.loads(probe.stdout).get('format', {})
+                    metadata['duration'] = float(fmt.get('duration', 0))
+            except:
+                pass
+            
+            print(f"✅ Fallback download successful: {output_path.name}")
             return output_path, metadata
     
     def is_audio_file(self, file_path: Path) -> bool:
