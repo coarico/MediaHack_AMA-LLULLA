@@ -173,12 +173,20 @@ class FileHandler:
             'extractor_args': {
                 'youtube': {
                     'player_client': ['android', 'web'],
+                },
+                'tiktok': {
+                    'api_hostname': 'api22-normal-c-useast2a.tiktokv.com',
                 }
             },
             'http_headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             },
         }
+        
+        # For TikTok, try with mobile user agent if web extraction fails
+        is_tiktok = 'tiktok.com' in url
+        if is_tiktok:
+            ydl_opts['http_headers']['User-Agent'] = 'com.zhiliaoapp.musically/2022500030 (Linux; U; Android 7.1.2; en_US; SM-G977N; Build/N2G47H;tt-ok/3.12.13.1)'
         
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:

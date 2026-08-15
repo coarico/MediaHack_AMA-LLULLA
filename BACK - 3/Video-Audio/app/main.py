@@ -522,6 +522,11 @@ async def analyze_from_url(request: AudioAnalysisRequest):
             
     except HTTPException:
         raise
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
     except Exception as e:
         import traceback
         print(f"❌ URL ENDPOINT ERROR: {e}")
