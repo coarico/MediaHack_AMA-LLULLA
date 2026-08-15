@@ -10,12 +10,12 @@
       "commands": [
         "pip install setuptools==80.9.0 wheel",
         "pip install --no-build-isolation openai-whisper==20231117",
-        "pip install -r requirements.txt"
+        "if [ -f requirements.txt ]; then pip install -r requirements.txt; else pip install -r 'BACK - 3/Video-Audio/requirements.txt'; fi"
       ]
     }
   },
   "deploy": {
     "aptPackages": ["...", "ffmpeg", "libgl1", "libglib2.0-0", "libsndfile1"],
-    "startCommand": "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    "startCommand": "if [ -d 'BACK - 3/Video-Audio/app' ]; then cd 'BACK - 3/Video-Audio'; fi; uvicorn app.main:app --host 0.0.0.0 --port $PORT"
   }
 }
