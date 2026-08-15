@@ -8,7 +8,7 @@
   "steps": {
     "install": {
       "commands": [
-        "pip install 'setuptools<81' wheel",
+        "pip install setuptools==80.9.0 wheel",
         "pip install --no-build-isolation openai-whisper==20231117",
         "pip install -r requirements.txt"
       ]
