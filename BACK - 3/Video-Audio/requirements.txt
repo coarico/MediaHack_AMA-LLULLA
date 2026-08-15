@@ -15,8 +15,8 @@ torch==2.4.1
 transformers==4.44.2
 
 # Data Validation
-pydantic==2.5.0
-pydantic-settings==2.1.0
+pydantic==2.8.2
+pydantic-settings==2.3.4
 
 # Utilities
 python-dotenv==1.0.0
