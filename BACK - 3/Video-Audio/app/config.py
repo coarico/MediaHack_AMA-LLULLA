@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings
 from typing import List
 
@@ -28,12 +29,11 @@ class Settings(BaseSettings):
     video_confidence_threshold: float = 0.7
     
     # CORS
-    cors_origins: List[str] = [
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "https://coarico.github.io",
-        "https://amallulia.vercel.app"
-    ]
+    cors_origins_raw: str = Field(
+        default="http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,https://coarico.github.io,https://amallulia.vercel.app",
+        validation_alias="CORS_ORIGINS",
+    )
+    cors_origin_regex: str | None = None
     
     # Google APIs
     google_application_credentials: str = "./google-credentials.json"
@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+
+    @property
+    def cors_origins(self) -> List[str]:
+        return [origin.strip() for origin in self.cors_origins_raw.split(",") if origin.strip()]
 
 
 settings = Settings()
