@@ -62,6 +62,7 @@ class Settings:
     news_rss_timeout_seconds: float = 6
     duckduckgo_fallback_query_limit: int = 2
     duckduckgo_timeout_seconds: float = 4
+    related_search_time_budget_seconds: float = 15
     request_timeout_seconds: float = 12
     max_html_bytes: int = 2_000_000
     max_article_chars: int = 24_000
@@ -109,6 +110,7 @@ def get_settings() -> Settings:
         news_rss_timeout_seconds=float(_env("NEWS_RSS_TIMEOUT_SECONDS", "6")),
         duckduckgo_fallback_query_limit=int(_env("DUCKDUCKGO_FALLBACK_QUERY_LIMIT", "2")),
         duckduckgo_timeout_seconds=float(_env("DUCKDUCKGO_TIMEOUT_SECONDS", "4")),
+        related_search_time_budget_seconds=float(_env("RELATED_SEARCH_TIME_BUDGET_SECONDS", "15")),
         request_timeout_seconds=float(_env("REQUEST_TIMEOUT_SECONDS", "12")),
         max_html_bytes=int(_env("MAX_HTML_BYTES", "2000000")),
         max_article_chars=int(_env("MAX_ARTICLE_CHARS", "24000")),
