@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "provider": "python",
+  "buildAptPackages": ["...", "build-essential", "gcc", "g++"],
+  "steps": {
+    "install": {
+      "commands": [
+        "pip install \"setuptools<81\" wheel",
+        "pip install --no-build-isolation openai-whisper==20231117",
+        "pip install -r requirements.txt"
+      ]
+    }
+  },
+  "deploy": {
+    "aptPackages": ["...", "ffmpeg", "libgl1", "libglib2.0-0", "libsndfile1"],
+    "startCommand": "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+  }
+}
