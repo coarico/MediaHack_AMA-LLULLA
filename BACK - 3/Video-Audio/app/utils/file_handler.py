@@ -180,32 +180,37 @@ class FileHandler:
             },
         }
         
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
-            
-            # Detect platform from extractor
-            extractor = info.get('extractor_key', 'Unknown')
-            
-            # Extract metadata (works across platforms)
-            metadata = {
-                'source_url': url,
-                'title': info.get('title', ''),
-                'channel': info.get('channel', '') or info.get('uploader', ''),
-                'channel_id': info.get('channel_id', ''),
-                'uploader': info.get('uploader', ''),
-                'upload_date': info.get('upload_date', ''),
-                'description': info.get('description', ''),
-                'view_count': info.get('view_count', 0),
-                'like_count': info.get('like_count', 0),
-                'duration': info.get('duration', 0),
-                'is_verified': info.get('channel_is_verified', False),
-                'platform': extractor,
-                'thumbnail': info.get('thumbnail', ''),
-                'thumbnails': info.get('thumbnails', [])
-            }
-            
-        return Path(filename), metadata
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                filename = ydl.prepare_filename(info)
+                
+                # Detect platform from extractor
+                extractor = info.get('extractor_key', 'Unknown')
+                
+                # Extract metadata (works across platforms)
+                metadata = {
+                    'source_url': url,
+                    'title': info.get('title', ''),
+                    'channel': info.get('channel', '') or info.get('uploader', ''),
+                    'channel_id': info.get('channel_id', ''),
+                    'uploader': info.get('uploader', ''),
+                    'upload_date': info.get('upload_date', ''),
+                    'description': info.get('description', ''),
+                    'view_count': info.get('view_count', 0),
+                    'like_count': info.get('like_count', 0),
+                    'duration': info.get('duration', 0),
+                    'is_verified': info.get('channel_is_verified', False),
+                    'platform': extractor,
+                    'thumbnail': info.get('thumbnail', ''),
+                    'thumbnails': info.get('thumbnails', [])
+                }
+                
+            return Path(filename), metadata
+        except yt_dlp.utils.DownloadError as e:
+            raise ValueError(f"No se pudo descargar el video de esta plataforma. Intenta con YouTube u otra URL. ({str(e)[:100]})")
+        except Exception as e:
+            raise ValueError(f"Error al descargar: {str(e)[:100]}")
     
     def is_audio_file(self, file_path: Path) -> bool:
         """Check if file is an audio file based on extension"""

@@ -80,23 +80,24 @@ function App() {
     setError(null)
     setAnalysisResult(null)
 
-    // Simulated exponential progress that approaches 90% while waiting for API
+    // Simulated progress that slows down significantly near 85%
     const progressInterval = setInterval(() => {
       setProgress(prev => {
-        if (prev >= 90) return prev
-        // Exponential approach: slows down as it gets closer to 90
-        const remaining = 90 - prev
-        const increment = Math.max(remaining * 0.08, 0.5)
+        if (prev >= 85) return prev
+        // Slower exponential approach - barely moves past 80%
+        const remaining = 85 - prev
+        const increment = Math.max(remaining * 0.03, 0.2)
         const next = prev + increment
-        if (next < 20) setProgressLabel('Descargando contenido...')
-        else if (next < 35) setProgressLabel('Extrayendo audio...')
-        else if (next < 55) setProgressLabel('Transcribiendo...')
-        else if (next < 70) setProgressLabel('Analizando con IA...')
-        else if (next < 85) setProgressLabel('Verificando fuentes...')
-        else setProgressLabel('Generando reporte...')
+        if (next < 10) setProgressLabel('Descargando contenido...')
+        else if (next < 25) setProgressLabel('Extrayendo audio...')
+        else if (next < 45) setProgressLabel('Transcribiendo audio...')
+        else if (next < 60) setProgressLabel('Analizando detección de IA...')
+        else if (next < 75) setProgressLabel('Verificando con Fact Check...')
+        else if (next < 82) setProgressLabel('Buscando fuentes relacionadas...')
+        else setProgressLabel('Generando análisis con LLM...')
         return next
       })
-    }, 400)
+    }, 800)
 
     try {
       let result
