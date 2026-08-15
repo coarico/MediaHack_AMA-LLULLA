@@ -4,7 +4,7 @@
     "builder": "RAILPACK"
   },
   "deploy": {
-    "startCommand": "if [ -d 'BACK - 3/Video-Audio/app' ]; then cd 'BACK - 3/Video-Audio'; fi; uvicorn app.main:app --host 0.0.0.0 --port $PORT",
+    "startCommand": "test -d app || cd BACK\\ -\\ 3/Video-Audio; uvicorn app.main:app --host 0.0.0.0 --port $PORT",
     "healthcheckPath": "/api/v1/health",
     "healthcheckTimeout": 600,
     "restartPolicyType": "ALWAYS"
