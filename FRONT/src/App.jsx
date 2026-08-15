@@ -1,7 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
-import { MessageCircle, X, Send, Link as LinkIcon, Upload, ClipboardList, Search, AlertTriangle, CheckCircle2, XCircle, Activity, Info, TrendingUp, BookOpen, Shield, Home, Landmark, Scale, Users, ArrowRight } from 'lucide-react'
+import { MessageCircle, X, Send, Link as LinkIcon, Upload, ClipboardList, Search, AlertTriangle, CheckCircle2, XCircle, Activity, Info, TrendingUp, BookOpen, Home, Landmark, Scale, Users, ArrowRight } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { analyzeUrl, analyzeAudio, analyzeVideo } from './services/api'
+import logo from './assets/logo.jpeg'
+
+// Paleta de marca (del logo AMA-LLU-IA)
+const BRAND_ORANGE = '#F5822B'
+const BRAND_NAVY = '#101B3D'
+const BRAND_NAVY_SOFT = '#16234E'
 
 function App() {
   const [activeView, setActiveView] = useState('home')
@@ -167,16 +173,14 @@ function App() {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#00C896' }}>
-                  <Shield className="w-6 h-6 text-white" />
-                </div>
+                <img src={logo} alt="AMA-LLU-IA" className="w-10 h-10 rounded-lg flex-shrink-0 object-cover" />
                 <div>
                   <h1 className="text-xl font-bold text-gray-900">AMA-LLU-IA</h1>
                   <p className="text-xs text-gray-600">Verificador de contenido electoral</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs px-3 py-1.5 rounded-full font-medium" style={{ backgroundColor: '#00C89620', color: '#00C896' }}>
+                <span className="text-xs px-3 py-1.5 rounded-full font-medium" style={{ backgroundColor: BRAND_ORANGE + '20', color: BRAND_ORANGE }}>
                   v1.0
                 </span>
               </div>
@@ -196,7 +200,7 @@ function App() {
                   : 'text-gray-600 hover:bg-gray-100'
               }`}
               style={{
-                backgroundColor: activeTab === tab.id ? '#00C896' : 'transparent',
+                backgroundColor: activeTab === tab.id ? BRAND_ORANGE : 'transparent',
                 border: activeTab === tab.id ? 'none' : '1px solid #E9ECEF'
               }}
             >
@@ -219,19 +223,14 @@ function App() {
             >
               <Landmark
                 className="hidden md:block absolute -right-6 -bottom-8 w-56 h-56 pointer-events-none"
-                style={{ color: '#00C896', opacity: 0.06 }}
+                style={{ color: BRAND_NAVY, opacity: 0.06 }}
               />
               <div className="relative flex items-start gap-4 max-w-2xl">
-                <div
-                  className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: 'rgba(0, 200, 150, 0.1)' }}
-                >
-                  <Shield className="w-6 h-6" style={{ color: '#00C896' }} />
-                </div>
+                <img src={logo} alt="AMA-LLU-IA" className="w-12 h-12 rounded-lg flex-shrink-0 object-cover" />
                 <div>
                   <span
                     className="inline-block text-xs font-semibold px-2.5 py-1 rounded-full mb-3"
-                    style={{ backgroundColor: 'rgba(0, 200, 150, 0.1)', color: '#00C896' }}
+                    style={{ backgroundColor: BRAND_ORANGE + '1A', color: BRAND_ORANGE }}
                   >
                     Verificación de contenido electoral
                   </span>
@@ -246,7 +245,7 @@ function App() {
                     onClick={() => setActiveView('verificar')}
                     className="mt-5 px-5 py-2.5 rounded-lg font-semibold text-sm transition-all flex items-center gap-2"
                     style={{
-                      backgroundColor: '#00C896',
+                      backgroundColor: BRAND_ORANGE,
                       color: '#FFFFFF'
                     }}
                   >
@@ -279,7 +278,7 @@ function App() {
             >
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <BookOpen className="w-5 h-5" style={{ color: '#00C896' }} />
+                  <BookOpen className="w-5 h-5" style={{ color: BRAND_ORANGE }} />
                   <h3 className="text-base font-semibold text-gray-900">¿Qué es la desinformación?</h3>
                 </div>
                 <p className="text-xs leading-relaxed text-gray-600">
@@ -343,7 +342,7 @@ function App() {
             >
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Search className="w-5 h-5" style={{ color: '#00C896' }} />
+                  <Search className="w-5 h-5" style={{ color: BRAND_ORANGE }} />
                   <h3 className="text-base font-semibold text-gray-900">¿Cómo te ayuda AMA-LLU-IA?</h3>
                 </div>
                 <p className="text-xs leading-relaxed text-gray-600">
@@ -386,13 +385,13 @@ function App() {
                   >
                     <div
                       className="w-8 h-8 rounded-lg flex items-center justify-center mb-3"
-                      style={{ backgroundColor: 'rgba(0, 200, 150, 0.1)' }}
+                      style={{ backgroundColor: BRAND_ORANGE + '1A' }}
                     >
-                      <item.icon className="w-4 h-4" style={{ color: '#00C896' }} />
+                      <item.icon className="w-4 h-4" style={{ color: BRAND_ORANGE }} />
                     </div>
                     <h4 className="text-sm font-semibold text-gray-900 mb-2">{item.title}</h4>
                     <p className="text-xs leading-relaxed text-gray-600 mb-3">{item.desc}</p>
-                    <span className="text-xs font-medium flex items-center gap-1" style={{ color: '#00C896' }}>
+                    <span className="text-xs font-medium flex items-center gap-1" style={{ color: BRAND_ORANGE }}>
                       Ir a {item.title}
                       <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
                     </span>
@@ -411,7 +410,7 @@ function App() {
             >
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Scale className="w-5 h-5" style={{ color: '#00C896' }} />
+                  <Scale className="w-5 h-5" style={{ color: BRAND_ORANGE }} />
                   <h3 className="text-base font-semibold text-gray-900">Rúbrica de clasificación</h3>
                 </div>
                 <p className="text-xs leading-relaxed text-gray-600">
@@ -441,7 +440,7 @@ function App() {
                   >
                     <span
                       className="font-mono text-sm font-bold flex-shrink-0 w-6 h-6 rounded flex items-center justify-center"
-                      style={{ color: '#00C896', backgroundColor: 'rgba(0, 200, 150, 0.08)' }}
+                      style={{ color: BRAND_ORANGE, backgroundColor: BRAND_ORANGE + '14' }}
                     >
                       {index + 1}
                     </span>
@@ -463,7 +462,7 @@ function App() {
             </div>
 
             <div className="flex items-center gap-2 pt-2">
-              <TrendingUp className="w-4 h-4" style={{ color: '#00C896' }} />
+              <TrendingUp className="w-4 h-4" style={{ color: BRAND_ORANGE }} />
               <h3 className="text-sm font-bold text-gray-900 tracking-wide">LO QUE YA SE HA VERIFICADO</h3>
             </div>
 
@@ -559,7 +558,7 @@ function App() {
               >
                 <div className="mb-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <TrendingUp className="w-5 h-5" style={{ color: '#00C896' }} />
+                    <TrendingUp className="w-5 h-5" style={{ color: BRAND_ORANGE }} />
                     <h3 className="text-base font-semibold text-gray-900">Tendencias actuales</h3>
                   </div>
                   <p className="text-xs leading-relaxed text-gray-600">
@@ -591,8 +590,8 @@ function App() {
                             <span
                               className="font-mono text-xs font-bold flex-shrink-0 w-5 h-5 rounded flex items-center justify-center mt-0.5"
                               style={{
-                                color: '#00C896',
-                                backgroundColor: 'rgba(0, 200, 150, 0.08)'
+                                color: BRAND_ORANGE,
+                                backgroundColor: BRAND_ORANGE + '14'
                               }}
                             >
                               {index + 1}
@@ -620,7 +619,7 @@ function App() {
                     <button
                       onClick={() => { setActiveTab('auditor'); setActiveView('verificar') }}
                       className="w-full text-center text-xs font-medium py-2 mt-1"
-                      style={{ color: '#00C896' }}
+                      style={{ color: BRAND_ORANGE }}
                     >
                       Ver historial completo en Auditor →
                     </button>
@@ -651,12 +650,12 @@ function App() {
                     onClick={() => setActiveTab(tab.id)}
                     className="flex-1 px-3 py-3.5 text-xs md:text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-inset"
                     style={{
-                      color: isActive ? '#00C896' : '#6B7280',
-                      borderBottom: isActive ? '2px solid #00C896' : '2px solid transparent',
-                      backgroundColor: isActive ? 'rgba(0, 200, 150, 0.04)' : 'transparent'
+                      color: isActive ? BRAND_ORANGE : '#6B7280',
+                      borderBottom: isActive ? `2px solid ${BRAND_ORANGE}` : '2px solid transparent',
+                      backgroundColor: isActive ? BRAND_ORANGE + '0A' : 'transparent'
                     }}
-                    onFocus={e => e.target.style.color = '#00C896'}
-                    onBlur={e => e.target.style.color = isActive ? '#00C896' : '#6B7280'}
+                    onFocus={e => e.target.style.color = BRAND_ORANGE}
+                    onBlur={e => e.target.style.color = isActive ? BRAND_ORANGE : '#6B7280'}
                   >
                     <Icon className="inline-block w-4 h-4 mr-1.5 -mt-0.5" />
                     {tab.label}
@@ -692,7 +691,7 @@ function App() {
                             border: '1px solid #E9ECEF',
                             color: '#111827'
                           }}
-                          onFocus={e => e.target.style.borderColor = '#00C896'}
+                          onFocus={e => e.target.style.borderColor = BRAND_ORANGE}
                           onBlur={e => e.target.style.borderColor = '#E9ECEF'}
                         />
                         <LinkIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -704,9 +703,9 @@ function App() {
                     disabled={analyzing}
                     className="w-full px-6 py-3 rounded-lg font-semibold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     style={{
-                      backgroundColor: analyzing ? '#E9ECEF' : '#00C896',
-                      color: analyzing ? '#6B7280' : '#0B0E14',
-                      '--tw-ring-color': '#00C896',
+                      backgroundColor: analyzing ? '#E9ECEF' : BRAND_ORANGE,
+                      color: analyzing ? '#6B7280' : '#FFFFFF',
+                      '--tw-ring-color': BRAND_ORANGE,
                       '--tw-ring-offset-color': '#FFFFFF'
                     }}
                   >
@@ -736,11 +735,11 @@ function App() {
                   <div
                     className="rounded-lg p-8 text-center transition-all cursor-pointer"
                     style={{
-                      border: '2px dashed #2A3142',
-                      backgroundColor: '#0B0E14'
+                      border: '2px dashed #16234E',
+                      backgroundColor: '#101B3D'
                     }}
-                    onMouseEnter={e => e.currentTarget.style.borderColor = '#00C896'}
-                    onMouseLeave={e => e.currentTarget.style.borderColor = '#2A3142'}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = BRAND_ORANGE}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = '#16234E'}
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <Upload className="w-10 h-10 mx-auto mb-3" style={{ color: '#7A8290' }} />
@@ -760,9 +759,9 @@ function App() {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="flex-1 h-px" style={{ backgroundColor: '#1E2433' }} />
+                    <div className="flex-1 h-px" style={{ backgroundColor: '#16234E' }} />
                     <span className="text-xs font-mono" style={{ color: '#7A8290' }}>o pega un enlace</span>
-                    <div className="flex-1 h-px" style={{ backgroundColor: '#1E2433' }} />
+                    <div className="flex-1 h-px" style={{ backgroundColor: '#16234E' }} />
                   </div>
 
                   <div className="relative">
@@ -773,12 +772,12 @@ function App() {
                       placeholder="https://ejemplo.com/video.mp4"
                       className="w-full px-4 py-3 pl-11 rounded-lg text-sm transition-all focus:outline-none font-mono"
                       style={{
-                        backgroundColor: '#0B0E14',
-                        border: '1px solid #1E2433',
+                        backgroundColor: '#101B3D',
+                        border: '1px solid #16234E',
                         color: '#E8ECF1'
                       }}
-                      onFocus={e => e.target.style.borderColor = '#00C896'}
-                      onBlur={e => e.target.style.borderColor = '#1E2433'}
+                      onFocus={e => e.target.style.borderColor = BRAND_ORANGE}
+                      onBlur={e => e.target.style.borderColor = '#16234E'}
                     />
                     <LinkIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#7A8290' }} />
                   </div>
@@ -788,10 +787,10 @@ function App() {
                     disabled={analyzing}
                     className="w-full px-6 py-3 rounded-lg font-semibold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     style={{
-                      backgroundColor: analyzing ? '#1E2433' : '#00C896',
-                      color: analyzing ? '#7A8290' : '#0B0E14',
-                      '--tw-ring-color': '#00C896',
-                      '--tw-ring-offset-color': '#12161F'
+                      backgroundColor: analyzing ? '#16234E' : BRAND_ORANGE,
+                      color: analyzing ? '#7A8290' : '#FFFFFF',
+                      '--tw-ring-color': BRAND_ORANGE,
+                      '--tw-ring-offset-color': '#101B3D'
                     }}
                   >
                     {analyzing ? (
@@ -943,7 +942,7 @@ function App() {
                       {totalSegs > 0 && (
                         <div className="rounded-xl border p-5" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
                           <div className="flex items-center gap-2 mb-4">
-                            <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#00C896' }} />
+                            <div className="w-1 h-5 rounded-full" style={{ backgroundColor: BRAND_ORANGE }} />
                             <h4 className="text-sm font-bold text-gray-900 tracking-wide">RESUMEN DEL DISCURSO</h4>
                           </div>
 
@@ -997,7 +996,7 @@ function App() {
                       {analysisResult.content_analysis?.has_transcription && analysisResult.content_analysis?.transcription?.text && (
                         <div className="rounded-xl border p-5" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
                           <div className="flex items-center gap-2 mb-4">
-                            <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#00C896' }} />
+                            <div className="w-1 h-5 rounded-full" style={{ backgroundColor: BRAND_ORANGE }} />
                             <h4 className="text-sm font-bold text-gray-900 tracking-wide">TRANSCRIPCIÓN + VERIFICACIÓN</h4>
                           </div>
                           <div className="space-y-3">
@@ -1016,7 +1015,7 @@ function App() {
                               const color = labelColors[seg.label] || '#7A8290'
                               return (
                                 <div key={idx} className="flex gap-3 pb-3" style={{ borderBottom: idx < 5 ? '1px solid #E9ECEF' : 'none' }}>
-                                  <span className="text-xs font-mono font-bold flex-shrink-0 pt-0.5" style={{ color: '#00C896' }}>{timestamp}</span>
+                                  <span className="text-xs font-mono font-bold flex-shrink-0 pt-0.5" style={{ color: BRAND_ORANGE }}>{timestamp}</span>
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm leading-relaxed mb-1.5 text-gray-900">"{seg.text}"</p>
                                     <div className="flex items-center gap-2 flex-wrap">
@@ -1035,7 +1034,7 @@ function App() {
                               const timestamp = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
                               return (
                                 <div key={idx} className="flex gap-3 pb-3" style={{ borderBottom: idx < 5 ? '1px solid #E9ECEF' : 'none' }}>
-                                  <span className="text-xs font-mono font-bold flex-shrink-0 pt-0.5" style={{ color: '#00C896' }}>{timestamp}</span>
+                                  <span className="text-xs font-mono font-bold flex-shrink-0 pt-0.5" style={{ color: BRAND_ORANGE }}>{timestamp}</span>
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm leading-relaxed text-gray-900">"{segment.text?.trim()}"</p>
                                     <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ backgroundColor: '#9CA3AF20', color: '#6B7280', border: '1px solid #9CA3AF40' }}>SIN_VERIFICAR</span>
@@ -1044,7 +1043,7 @@ function App() {
                               )
                             }) || (
                               <div className="flex gap-3 pb-3">
-                                <span className="text-xs font-mono font-bold flex-shrink-0" style={{ color: '#00C896' }}>00:00</span>
+                                <span className="text-xs font-mono font-bold flex-shrink-0" style={{ color: BRAND_ORANGE }}>00:00</span>
                                 <p className="text-sm leading-relaxed text-gray-900">{analysisResult.content_analysis.transcription.text}</p>
                               </div>
                             )}
@@ -1125,7 +1124,7 @@ function App() {
                   {/* Historial real de analisis (guardado en este navegador) */}
                   <div className="mb-2">
                     <div className="flex items-center gap-2 mb-2">
-                      <ClipboardList className="w-5 h-5" style={{ color: '#00C896' }} />
+                      <ClipboardList className="w-5 h-5" style={{ color: BRAND_ORANGE }} />
                       <h3 className="text-base font-semibold text-white">Historial de análisis</h3>
                     </div>
                     <p className="text-xs leading-relaxed" style={{ color: '#7A8290' }}>
@@ -1134,7 +1133,7 @@ function App() {
                   </div>
 
                   {history.length === 0 ? (
-                    <div className="rounded-lg p-6 text-center" style={{ backgroundColor: '#0B0E14', border: '1px solid #1E2433' }}>
+                    <div className="rounded-lg p-6 text-center" style={{ backgroundColor: '#101B3D', border: '1px solid #16234E' }}>
                       <ClipboardList className="w-7 h-7 mx-auto mb-2" style={{ color: '#7A8290' }} />
                       <p className="text-xs" style={{ color: '#7A8290' }}>
                         Todavía no has analizado ningún contenido. Los resultados aparecerán aquí automáticamente
@@ -1149,7 +1148,7 @@ function App() {
                           <div
                             key={item.id}
                             className="rounded-lg p-3"
-                            style={{ backgroundColor: '#0B0E14', border: '1px solid #1E2433' }}
+                            style={{ backgroundColor: '#101B3D', border: '1px solid #16234E' }}
                           >
                             <div className="flex items-start justify-between gap-3">
                               <p className="text-sm flex-1 min-w-0 truncate" style={{ color: '#E8ECF1' }}>{item.title}</p>
@@ -1177,9 +1176,9 @@ function App() {
                     </div>
                   )}
 
-                  <div className="mb-4 pt-2" style={{ borderTop: '1px solid #1E2433' }}>
+                  <div className="mb-4 pt-2" style={{ borderTop: '1px solid #16234E' }}>
                     <div className="flex items-center gap-2 mb-2 pt-2">
-                      <ClipboardList className="w-5 h-5" style={{ color: '#00C896' }} />
+                      <ClipboardList className="w-5 h-5" style={{ color: BRAND_ORANGE }} />
                       <h3 className="text-base font-semibold text-white">Criterios de evaluación</h3>
                     </div>
                     <p className="text-xs leading-relaxed" style={{ color: '#7A8290' }}>
@@ -1192,15 +1191,15 @@ function App() {
                         key={index}
                         className="flex items-start gap-3 rounded-lg p-3 transition-all"
                         style={{
-                          backgroundColor: '#0B0E14',
-                          border: '1px solid #1E2433'
+                          backgroundColor: '#101B3D',
+                          border: '1px solid #16234E'
                         }}
                       >
                         <span
                           className="font-mono text-sm font-bold flex-shrink-0 w-6 h-6 rounded flex items-center justify-center"
                           style={{
-                            color: '#00C896',
-                            backgroundColor: 'rgba(0, 200, 150, 0.08)'
+                            color: BRAND_ORANGE,
+                            backgroundColor: BRAND_ORANGE + '14'
                           }}
                         >
                           {index + 1}
@@ -1222,8 +1221,8 @@ function App() {
         <div
           className="mt-3 flex items-center justify-between px-4 py-2.5 rounded-lg text-xs font-mono"
           style={{
-            backgroundColor: '#12161F',
-            border: '1px solid #1E2433',
+            backgroundColor: BRAND_NAVY,
+            border: `1px solid ${BRAND_NAVY_SOFT}`,
             color: '#7A8290'
           }}
         >
@@ -1231,7 +1230,7 @@ function App() {
             <div
               className="w-1.5 h-1.5 rounded-full"
               style={{
-                backgroundColor: '#00C896',
+                backgroundColor: BRAND_ORANGE,
                 animation: 'pulse-dot 2s ease-in-out infinite'
               }}
             />
@@ -1248,10 +1247,10 @@ function App() {
         style={{
           width: '52px',
           height: '52px',
-          backgroundColor: chatOpen ? '#1E2433' : '#00C896',
-          color: chatOpen ? '#E8ECF1' : '#0B0E14',
-          '--tw-ring-color': '#00C896',
-          '--tw-ring-offset-color': '#0B0E14'
+          backgroundColor: chatOpen ? BRAND_NAVY_SOFT : BRAND_ORANGE,
+          color: chatOpen ? '#E8ECF1' : '#FFFFFF',
+          '--tw-ring-color': BRAND_ORANGE,
+          '--tw-ring-offset-color': BRAND_NAVY
         }}
         aria-label={chatOpen ? 'Cerrar chat' : 'Abrir chat'}
       >
@@ -1263,15 +1262,15 @@ function App() {
         <div
           className="fixed bottom-20 right-5 w-[calc(100vw-2.5rem)] md:w-96 h-[420px] rounded-xl flex flex-col z-50 overflow-hidden"
           style={{
-            backgroundColor: '#12161F',
-            border: '1px solid #1E2433'
+            backgroundColor: BRAND_NAVY,
+            border: `1px solid ${BRAND_NAVY_SOFT}`
           }}
         >
-          <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid #1E2433' }}>
+          <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: `1px solid ${BRAND_NAVY_SOFT}` }}>
             <div
               className="w-2 h-2 rounded-full"
               style={{
-                backgroundColor: '#00C896',
+                backgroundColor: BRAND_ORANGE,
                 animation: 'pulse-dot 2s ease-in-out infinite'
               }}
             />
@@ -1285,8 +1284,8 @@ function App() {
                   className="max-w-[80%] px-3.5 py-2.5 rounded-lg text-sm leading-relaxed"
                   style={
                     msg.role === 'user'
-                      ? { backgroundColor: '#00C896', color: '#0B0E14', fontWeight: 500 }
-                      : { backgroundColor: '#0B0E14', color: '#E8ECF1', border: '1px solid #1E2433' }
+                      ? { backgroundColor: BRAND_ORANGE, color: '#FFFFFF', fontWeight: 500 }
+                      : { backgroundColor: BRAND_NAVY_SOFT, color: '#E8ECF1', border: `1px solid ${BRAND_NAVY_SOFT}` }
                   }
                 >
                   {msg.text}
@@ -1296,7 +1295,7 @@ function App() {
             <div ref={chatEndRef} />
           </div>
 
-          <div className="p-3" style={{ borderTop: '1px solid #1E2433' }}>
+          <div className="p-3" style={{ borderTop: `1px solid ${BRAND_NAVY_SOFT}` }}>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -1306,19 +1305,19 @@ function App() {
                 placeholder="Escribe tu pregunta..."
                 className="flex-1 px-3 py-2.5 rounded-lg text-sm focus:outline-none font-mono"
                 style={{
-                  backgroundColor: '#0B0E14',
-                  border: '1px solid #1E2433',
+                  backgroundColor: BRAND_NAVY_SOFT,
+                  border: `1px solid ${BRAND_NAVY_SOFT}`,
                   color: '#E8ECF1'
                 }}
-                onFocus={e => e.target.style.borderColor = '#00C896'}
-                onBlur={e => e.target.style.borderColor = '#1E2433'}
+                onFocus={e => e.target.style.borderColor = BRAND_ORANGE}
+                onBlur={e => e.target.style.borderColor = BRAND_NAVY_SOFT}
               />
               <button
                 onClick={handleSendMessage}
                 className="px-3 py-2.5 rounded-lg transition-all flex items-center justify-center"
                 style={{
-                  backgroundColor: '#00C896',
-                  color: '#0B0E14'
+                  backgroundColor: BRAND_ORANGE,
+                  color: '#FFFFFF'
                 }}
                 aria-label="Enviar mensaje"
               >
