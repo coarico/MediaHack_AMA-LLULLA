@@ -1,0 +1,166 @@
+{
+  "id": "news_example_001",
+  "user_id": "demo_user",
+  "module": "noticias",
+  "content_type": "news_url",
+  "visibility": "private",
+  "status": "completed",
+  "created_at": "2026-08-14T00:00:00Z",
+  "updated_at": "2026-08-14T00:00:00Z",
+  "source_input": {
+    "type": "url",
+    "original_url": "https://ejemplo.com/noticia",
+    "final_url": "https://ejemplo.com/noticia",
+    "submitted_title": null
+  },
+  "editorial_metadata": {
+    "platform": "sitio_web",
+    "publisher_type": "medio_comunicacion",
+    "publication_date": "2026-08-14",
+    "thematic_axis": "Elecciones",
+    "thematic_tags": ["elecciones"],
+    "inferred": true,
+    "confidence": 0.7,
+    "notes": []
+  },
+  "content_attribution": {
+    "platform_name": "ejemplo.com",
+    "platform_type": "sitio_web",
+    "shared_by_account": null,
+    "shared_by_display_name": null,
+    "publisher_name": "Ejemplo Radar",
+    "publisher_handle": null,
+    "publisher_type": "medio_comunicacion",
+    "source_domain": "ejemplo.com",
+    "explanation": "El contenido proviene directamente del dominio ejemplo.com."
+  },
+  "source_verification": {
+    "status": "radar_media",
+    "source_name": "Ejemplo Radar",
+    "matched_domain": "ejemplo.com",
+    "verification_network": null,
+    "needs_additional_validation": false,
+    "recommendation": "Fuente en lista Radar. Validacion adicional opcional segun sensibilidad del contenido.",
+    "reasons": ["El dominio coincide con la lista Radar configurada."]
+  },
+  "information_relevance": {
+    "is_relevant": true,
+    "relevance_score": 40,
+    "domain": "electoral",
+    "definition_applied": "Informacion relevante electoral es contenido que puede afectar la comprension, decision, confianza o participacion ciudadana en un proceso electoral.",
+    "subtopics": ["candidatos"],
+    "relation_type": "contextual",
+    "reasons": ["Se detectaron terminos electorales."],
+    "how_it_relates": "Se relaciona de forma contextual porque contiene lenguaje electoral, pero requiere revisar su impacto ciudadano.",
+    "non_relevant_reason": null
+  },
+  "url_health": {
+    "status": "active",
+    "http_status": 200,
+    "is_reachable": true,
+    "is_disconnected": false,
+    "redirect_count": 0,
+    "warnings": []
+  },
+  "url_trust_assessment": {
+    "is_technically_trustworthy": true,
+    "level": "confiable",
+    "score": 100,
+    "reasons": ["No se detectaron senales tecnicas fuertes de riesgo en la URL."],
+    "scope": "url_only"
+  },
+  "url_risk_signals": [],
+  "source_classification": {
+    "is_radar_media": true,
+    "communication_type": "medio_radar",
+    "source_name": "Ejemplo Radar",
+    "matched_domain": "ejemplo.com",
+    "confidence": 1,
+    "explanation": "El dominio coincide con la lista Radar configurada."
+  },
+  "article": {
+    "url": "https://ejemplo.com/noticia",
+    "source_domain": "ejemplo.com",
+    "title": "Titulo de la noticia",
+    "author": "Redaccion",
+    "published_at": "2026-08-14",
+    "language": "es",
+    "image_url": null,
+    "text": "Texto limpio de la noticia."
+  },
+  "content_quality": {
+    "has_author": true,
+    "has_date": true,
+    "text_length": 27,
+    "has_sources": false,
+    "title_body_overlap_score": 0.5,
+    "quality_score": 70,
+    "warnings": []
+  },
+  "analysis": {
+    "summary": "Resumen de la noticia.",
+    "topic": "Tema principal",
+    "category": "politica",
+    "main_claims": ["Afirmacion central"],
+    "entities": {
+      "people": [],
+      "organizations": [],
+      "locations": []
+    },
+    "keywords": ["keyword"],
+    "search_queries": ["consulta relacionada"],
+    "sentiment": {
+      "label": "neutral",
+      "score": 0.5
+    },
+    "bias_analysis": {
+      "score": 20,
+      "direction": "no determinado",
+      "explanation": "No se observan senales fuertes."
+    },
+    "manipulation_signals": [],
+    "clickbait": {
+      "score": 10,
+      "evidence": []
+    },
+    "credibility": {
+      "score": 80,
+      "risk_level": "bajo",
+      "explanation": "La noticia tiene fuente identificable."
+    },
+    "information_gaps": [],
+    "missing_context": [],
+    "recommendation": "Contrastar con cobertura relacionada."
+  },
+  "verifiable_claims": [
+    {
+      "claim": "Afirmacion central",
+      "type": "evento",
+      "entities": [],
+      "needs_external_verification": true
+    }
+  ],
+  "related_news": [],
+  "cross_source_check": {
+    "related_coverage_count": 0,
+    "radar_media_coverage_count": 0,
+    "independent_sources_count": 0,
+    "contradictions_found": false,
+    "coverage_status": "no_related_coverage",
+    "notes": []
+  },
+  "risk_assessment": {
+    "score": 20,
+    "level": "bajo",
+    "fraud_or_disinformation_risk": "bajo",
+    "reasons": [],
+    "cannot_conclude_fraud": true
+  },
+  "audit": {
+    "ready_for_audit": true,
+    "priority": "media",
+    "evidence_summary": "Fuente Radar, sitio web, eje Elecciones, link activo, riesgo bajo.",
+    "evidence_items": [],
+    "presentation_blocks": []
+  }
+}

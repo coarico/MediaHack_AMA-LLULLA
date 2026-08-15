@@ -1,0 +1,81 @@
+{
+  "media": [
+    {
+      "name": "Primicias",
+      "domain": "primicias.ec",
+      "category": "medio_comunicacion_sitio_web",
+      "editorial_alignment": "no_definido",
+      "platform": "sitio_web"
+    },
+    {
+      "name": "El Universo",
+      "domain": "eluniverso.com",
+      "category": "medio_comunicacion_sitio_web",
+      "editorial_alignment": "no_definido",
+      "platform": "sitio_web"
+    },
+    {
+      "name": "El Comercio",
+      "domain": "elcomercio.com",
+      "category": "medio_comunicacion_sitio_web",
+      "editorial_alignment": "no_definido",
+      "platform": "sitio_web"
+    },
+    {
+      "name": "El Comercio",
+      "domain": "elcomercio.com.ec",
+      "category": "medio_comunicacion_sitio_web",
+      "editorial_alignment": "no_definido",
+      "platform": "sitio_web"
+    },
+    {
+      "name": "Ecuavisa",
+      "domain": "ecuavisa.com",
+      "category": "medio_comunicacion_sitio_web",
+      "editorial_alignment": "no_definido",
+      "platform": "sitio_web"
+    },
+    {
+      "name": "Teleamazonas",
+      "domain": "teleamazonas.com",
+      "category": "medio_comunicacion_sitio_web",
+      "editorial_alignment": "no_definido",
+      "platform": "sitio_web"
+    },
+    {
+      "name": "Expreso",
+      "domain": "expreso.ec",
+      "category": "medio_comunicacion_sitio_web",
+      "editorial_alignment": "no_definido",
+      "platform": "sitio_web"
+    },
+    {
+      "name": "Metro Ecuador",
+      "domain": "metroecuador.com.ec",
+      "category": "medio_comunicacion_sitio_web",
+      "editorial_alignment": "no_definido",
+      "platform": "sitio_web"
+    },
+    {
+      "name": "Extra",
+      "domain": "extra.ec",
+      "category": "medio_comunicacion_sitio_web",
+      "editorial_alignment": "no_definido",
+      "platform": "sitio_web"
+    },
+    {
+      "name": "La Hora",
+      "domain": "lahora.com.ec",
+      "category": "medio_comunicacion_sitio_web",
+      "editorial_alignment": "no_definido",
+      "platform": "sitio_web"
+    },
+    {
+      "name": "Vistazo",
+      "domain": "vistazo.com",
+      "category": "medio_comunicacion_sitio_web",
+      "editorial_alignment": "no_definido",
+      "platform": "sitio_web"
+    }
+  ]
+}
