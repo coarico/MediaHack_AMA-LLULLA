@@ -1,13 +1,23 @@
 import { useState, useRef, useEffect } from 'react'
+<<<<<<< HEAD
 import {
   MessageCircle, X, Send, Link as LinkIcon, Upload, ClipboardList, Search,
   AlertTriangle, CheckCircle2, XCircle, Activity, Info, TrendingUp, BookOpen,
   Home, Sparkles, Paperclip, ShieldCheck, Youtube, ExternalLink, Play,
   Volume2, Maximize2, Settings, Video, Image as ImageIcon, Music2, Radar as RadarIcon
 } from 'lucide-react'
+=======
+import { MessageCircle, X, Send, Link as LinkIcon, Upload, ClipboardList, Search, AlertTriangle, CheckCircle2, XCircle, Activity, Info, TrendingUp, BookOpen, Home, Landmark, Scale, Users, ArrowRight } from 'lucide-react'
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import logo from './assets/logo.svg'
 import { analyzeUrl, analyzeAudio, analyzeVideo } from './services/api'
+import logo from './assets/logo.jpeg'
+
+// Paleta de marca (del logo AMA-LLU-IA)
+const BRAND_ORANGE = '#F5822B'
+const BRAND_NAVY = '#101B3D'
+const BRAND_NAVY_SOFT = '#16234E'
 
 // ===== Paleta (tema claro) =====
 const C = {
@@ -47,16 +57,39 @@ function App() {
   const [heroQuery, setHeroQuery] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [messages, setMessages] = useState([
-    { role: 'bot', text: 'Hola. Soy el asistente de AMA-LLU-IA. Puedes preguntarme sobre verificación de contenido electoral.' }
+    { role: 'bot', text: 'Hola. Soy el asistente de AMA LLU-IA. Puedes preguntarme sobre verificación de contenido electoral.' }
   ])
   const [inputMessage, setInputMessage] = useState('')
   const chatEndRef = useRef(null)
   const fileInputRef = useRef(null)
 
+  const HISTORY_KEY = 'ama_llu_ia_history'
+  const [history, setHistory] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(HISTORY_KEY))
+      return Array.isArray(stored) ? stored : []
+    } catch {
+      return []
+    }
+  })
+
+  const addHistoryEntry = (entry) => {
+    setHistory(prev => {
+      const updated = [entry, ...prev].slice(0, 50)
+      try {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(updated))
+      } catch {
+        // localStorage no disponible (modo privado, cuota llena, etc.) - no bloquea el analisis
+      }
+      return updated
+    })
+  }
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+<<<<<<< HEAD
   // ===== Datos de ejemplo (demo, igual que el resto del front) =====
   const chartData = [
     { name: 'Verificado', value: 55, color: C.green },
@@ -64,6 +97,8 @@ function App() {
     { name: 'Falso', value: 15, color: C.red }
   ]
 
+=======
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
   const criterios = [
     { title: 'Fuente verificada', desc: 'Origen y autoría del contenido' },
     { title: 'Coherencia del contenido', desc: 'Consistencia interna y contextual' },
@@ -72,13 +107,16 @@ function App() {
     { title: 'Viralidad vs veracidad', desc: 'Velocidad de difusión vs confirmación' }
   ]
 
-  const rankingNoticias = [
-    { titulo: 'Candidato X promete reducir impuestos en 50%', status: 'falso', viralidad: 8500 },
-    { titulo: 'Nueva ley electoral aprobada por CNE', status: 'verificado', viralidad: 6200 },
-    { titulo: 'Encuesta muestra empate técnico', status: 'dudoso', viralidad: 4800 },
-    { titulo: 'Debate presidencial cancelado', status: 'falso', viralidad: 3900 },
-    { titulo: 'Resultados preliminares disponibles', status: 'verificado', viralidad: 2100 }
-  ]
+  // Estadisticas reales derivadas del historial (nada de datos ficticios)
+  const totalAnalyzed = history.length
+  const statusCounts = { verificado: 0, dudoso: 0, falso: 0 }
+  history.forEach(h => { if (statusCounts[h.status] !== undefined) statusCounts[h.status]++ })
+  const chartData = totalAnalyzed > 0 ? [
+    { name: 'Verificado', value: Math.round((statusCounts.verificado / totalAnalyzed) * 100), color: '#00C896' },
+    { name: 'Dudoso', value: Math.round((statusCounts.dudoso / totalAnalyzed) * 100), color: '#E8A33D' },
+    { name: 'Falso', value: Math.round((statusCounts.falso / totalAnalyzed) * 100), color: '#E85D5D' }
+  ] : []
+  const recentHistory = history.slice(0, 5)
 
   const educacion = [
     { icon: AlertTriangle, color: C.amber, bg: C.amberSoft, title: 'Información falsa', desc: 'Contenido creado deliberadamente para engañar o manipular la opinión pública.' },
@@ -189,6 +227,22 @@ function App() {
       setStatusMsg('Análisis completado')
       setProgress(100)
       setAnalysisResult(result)
+
+      // Registrar en el historial real (localStorage) para Auditor y Home
+      const status = (result.is_ai_generated || result.is_misinformation)
+        ? 'falso'
+        : (result.confidence < 0.6 ? 'dudoso' : 'verificado')
+      const sourceTitle = result.metadata?.source_metadata?.title
+      const title = sourceTitle || (activeTab === 'link' ? urlValue : (selectedFile?.name || videoUrl)) || 'Contenido analizado'
+      addHistoryEntry({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        type: activeTab,
+        title,
+        source: activeTab === 'link' ? urlValue : (videoUrl || selectedFile?.name || ''),
+        status,
+        confidence: typeof result.confidence === 'number' ? result.confidence : null,
+        timestamp: new Date().toISOString()
+      })
     } catch (err) {
       setError(err.message || 'Error al procesar el análisis')
       console.error('Error al analizar:', err)
@@ -258,6 +312,7 @@ function App() {
       <div className="max-w-[1280px] mx-auto">
 
         {/* ===== HEADER ===== */}
+<<<<<<< HEAD
         <header
           className="mb-6 flex items-center justify-between gap-4 rounded-xl px-5 py-3.5 flex-wrap"
           style={card}
@@ -270,6 +325,44 @@ function App() {
               </div>
               <div className="text-[10px] font-mono uppercase tracking-wider" style={{ color: C.textFaint }}>
                 Verificamos. Informamos. Empoderamos.
+=======
+        <header className="mb-6">
+          <div
+            className="rounded-xl border px-6 py-4"
+            style={{
+              backgroundColor: '#F8F9FA',
+              borderColor: '#E9ECEF'
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setActiveView('home')}
+                className="flex items-center gap-3 text-left focus:outline-none"
+                aria-label="Ir al inicio"
+              >
+                <img src={logo} alt="AMA LLU-IA" className="w-10 h-10 rounded-lg flex-shrink-0 object-cover" />
+                <div>
+                  <h1 className="text-xl font-bold tracking-tight" style={{ color: BRAND_NAVY }}>
+                    AMA LLU-<span style={{ color: BRAND_ORANGE }}>IA</span>
+                  </h1>
+                  <p className="text-xs font-medium text-gray-600">Verificamos. Informamos. Empoderamos.</p>
+                </div>
+              </button>
+              <div className="flex items-center gap-2">
+                {activeView === 'verificar' && (
+                  <button
+                    onClick={() => setActiveView('home')}
+                    className="text-xs px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all hover:bg-gray-100"
+                    style={{ border: '1px solid #E9ECEF', color: '#6B7280' }}
+                  >
+                    <Home className="w-3.5 h-3.5" />
+                    Inicio
+                  </button>
+                )}
+                <span className="text-xs px-3 py-1.5 rounded-full font-medium" style={{ backgroundColor: BRAND_ORANGE + '20', color: BRAND_ORANGE }}>
+                  v1.0
+                </span>
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
               </div>
             </div>
           </div>
@@ -305,6 +398,7 @@ function App() {
           </button>
         </header>
 
+<<<<<<< HEAD
         {/* ===== HOME: ANALIZADOR MULTIMEDIA ===== */}
         {activeView === 'home' && (
           <div className="space-y-6">
@@ -350,14 +444,93 @@ function App() {
                     disabled={analyzing}
                     className="px-6 py-3.5 rounded-full font-semibold text-sm transition-all disabled:opacity-60 flex items-center justify-center gap-2 flex-shrink-0"
                     style={{ backgroundColor: C.orange, color: '#FFFFFF' }}
+=======
+        {/* ===== TABS (acceso rapido desde Home; en "verificar" ya esta la barra de tabs del panel) ===== */}
+        {activeView === 'home' && (
+          <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => { setActiveTab(tab.id); setActiveView('verificar') }}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  activeTab === tab.id
+                    ? 'text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+                style={{
+                  backgroundColor: activeTab === tab.id ? BRAND_ORANGE : 'transparent',
+                  border: activeTab === tab.id ? 'none' : '1px solid #E9ECEF'
+                }}
+              >
+                <tab.icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* ===== HOME VIEW ===== */}
+        {activeView === 'home' && (
+          <div className="space-y-6">
+            {/* Bienvenido / Hero */}
+            <div
+              className="relative overflow-hidden rounded-xl border p-6 md:p-10"
+              style={{
+                backgroundColor: '#F8F9FA',
+                borderColor: '#E9ECEF'
+              }}
+            >
+              <Landmark
+                className="hidden md:block absolute -right-6 -bottom-8 w-56 h-56 pointer-events-none"
+                style={{ color: BRAND_NAVY, opacity: 0.06 }}
+              />
+              <div className="relative flex items-start gap-4 max-w-2xl">
+                <img src={logo} alt="AMA LLU-IA" className="w-12 h-12 rounded-lg flex-shrink-0 object-cover" />
+                <div>
+                  <span
+                    className="inline-block text-xs font-semibold px-2.5 py-1 rounded-full mb-3"
+                    style={{ backgroundColor: BRAND_ORANGE + '1A', color: BRAND_ORANGE }}
+                  >
+                    Verificación de contenido electoral
+                  </span>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    Bienvenido a AMA LLU-<span style={{ color: BRAND_ORANGE }}>IA</span>
+                  </h2>
+                  <p className="text-sm leading-relaxed text-gray-600">
+                    En época de elecciones, la información circula más rápido de lo que se puede verificar.
+                    Esta herramienta analiza noticias, videos y audios para ayudarte a identificar señales de
+                    manipulación o desinformación electoral — pero no decide por ti: te da elementos objetivos
+                    para que <strong>tú corrobores y decidas</strong> qué creer y qué compartir.
+                  </p>
+                  <button
+                    onClick={() => setActiveView('verificar')}
+                    className="mt-5 px-5 py-2.5 rounded-lg font-semibold text-sm transition-all flex items-center gap-2"
+                    style={{
+                      backgroundColor: BRAND_ORANGE,
+                      color: '#FFFFFF'
+                    }}
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
                   >
                     {analyzing ? <Activity className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                     {analyzing ? 'Analizando...' : 'Analizar'}
                   </button>
+
+                  <div className="flex flex-wrap gap-2 mt-5">
+                    {['Contexto electoral Ecuador', 'IA + criterio humano', 'Fuentes oficiales'].map((badge) => (
+                      <span
+                        key={badge}
+                        className="text-xs px-3 py-1 rounded-full font-medium text-gray-600"
+                        style={{ backgroundColor: '#FFFFFF', border: '1px solid #E9ECEF' }}
+                      >
+                        {badge}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
 
+<<<<<<< HEAD
             {/* Fila 1: Autenticidad + Fuente original */}
             <div className="grid md:grid-cols-2 gap-5">
               <div className="rounded-xl p-6" style={card}>
@@ -448,11 +621,291 @@ function App() {
                         <Settings className="w-3.5 h-3.5" />
                         <Maximize2 className="w-3.5 h-3.5" />
                       </div>
-                    </div>
-                  </div>
+=======
+            {/* ¿Qué es la desinformación? */}
+            <div
+              className="rounded-xl border p-6"
+              style={{
+                backgroundColor: '#F8F9FA',
+                borderColor: '#E9ECEF'
+              }}
+            >
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <BookOpen className="w-5 h-5" style={{ color: BRAND_ORANGE }} />
+                  <h3 className="text-base font-semibold text-gray-900">¿Qué es la desinformación?</h3>
                 </div>
+                <p className="text-xs leading-relaxed text-gray-600">
+                  Durante los procesos electorales circula mucho contenido y no todo es confiable. Reconocer estas
+                  formas de manipulación es el primer paso para protegerte de ellas.
+                </p>
               </div>
 
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  {
+                    icon: AlertTriangle,
+                    color: '#E8A33D',
+                    title: 'Información falsa',
+                    desc: 'Contenido creado deliberadamente para engañar, muchas veces disfrazado de noticia real.'
+                  },
+                  {
+                    icon: Activity,
+                    color: '#3B82F6',
+                    title: 'Audio/video manipulado',
+                    desc: 'Grabaciones editadas o generadas con IA (deepfakes) para tergiversar una declaración.'
+                  },
+                  {
+                    icon: XCircle,
+                    color: '#E85D5D',
+                    title: 'Campañas de bots',
+                    desc: 'Cuentas automatizadas que amplifican un mensaje para simular apoyo o rechazo masivo.'
+                  },
+                  {
+                    icon: CheckCircle2,
+                    color: '#00C896',
+                    title: 'Verificación',
+                    desc: 'Contrastar la información con fuentes oficiales y verificadores independientes antes de creer o compartir.'
+                  }
+                ].map((item) => (
+                  <div
+                    key={item.title}
+                    className="rounded-lg p-4"
+                    style={{ backgroundColor: '#FFFFFF', border: '1px solid #E9ECEF' }}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center mb-3"
+                      style={{ backgroundColor: item.color + '1A' }}
+                    >
+                      <item.icon className="w-4 h-4" style={{ color: item.color }} />
+                    </div>
+                    <h4 className="text-sm font-semibold text-gray-900 mb-2">{item.title}</h4>
+                    <p className="text-xs leading-relaxed text-gray-600">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ¿Cómo te ayuda cada sección? */}
+            <div
+              className="rounded-xl border p-6"
+              style={{
+                backgroundColor: '#F8F9FA',
+                borderColor: '#E9ECEF'
+              }}
+            >
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Search className="w-5 h-5" style={{ color: BRAND_ORANGE }} />
+                  <h3 className="text-base font-semibold text-gray-900">
+                    ¿Cómo te ayuda AMA LLU-<span style={{ color: BRAND_ORANGE }}>IA</span>?
+                  </h3>
+                </div>
+                <p className="text-xs leading-relaxed text-gray-600">
+                  Cuatro herramientas, un mismo objetivo: darte elementos para decidir con criterio propio.
+                </p>
+              </div>
+
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  {
+                    icon: LinkIcon,
+                    title: 'Link Noticia',
+                    desc: 'Pega el enlace de una noticia y analizamos su contenido, fuente y coherencia con la información oficial.',
+                    action: () => { setActiveTab('link'); setActiveView('verificar') }
+                  },
+                  {
+                    icon: Upload,
+                    title: 'Video / Audio',
+                    desc: 'Sube o enlaza un video o audio. Transcribimos lo dicho y verificamos las afirmaciones segmento por segmento.',
+                    action: () => { setActiveTab('video'); setActiveView('verificar') }
+                  },
+                  {
+                    icon: ClipboardList,
+                    title: 'Auditor',
+                    desc: 'Respaldo de todos los links y noticias ya analizados, con sus resultados y criterios aplicados.',
+                    action: () => { setActiveTab('auditor'); setActiveView('verificar') }
+                  },
+                  {
+                    icon: MessageCircle,
+                    title: 'Bot',
+                    desc: 'Resuelve dudas puntuales sobre verificación electoral conversando directamente con el asistente.',
+                    action: () => setChatOpen(true)
+                  }
+                ].map((item) => (
+                  <button
+                    key={item.title}
+                    onClick={item.action}
+                    className="text-left rounded-lg p-4 transition-all hover:-translate-y-0.5 group"
+                    style={{ backgroundColor: '#FFFFFF', border: '1px solid #E9ECEF' }}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center mb-3"
+                      style={{ backgroundColor: BRAND_ORANGE + '1A' }}
+                    >
+                      <item.icon className="w-4 h-4" style={{ color: BRAND_ORANGE }} />
+                    </div>
+                    <h4 className="text-sm font-semibold text-gray-900 mb-2">{item.title}</h4>
+                    <p className="text-xs leading-relaxed text-gray-600 mb-3">{item.desc}</p>
+                    <span className="text-xs font-medium flex items-center gap-1" style={{ color: BRAND_ORANGE }}>
+                      Ir a {item.title}
+                      <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Rúbrica de clasificación */}
+            <div
+              className="rounded-xl border p-6"
+              style={{
+                backgroundColor: '#F8F9FA',
+                borderColor: '#E9ECEF'
+              }}
+            >
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Scale className="w-5 h-5" style={{ color: BRAND_ORANGE }} />
+                  <h3 className="text-base font-semibold text-gray-900">Rúbrica de clasificación</h3>
+                </div>
+                <p className="text-xs leading-relaxed text-gray-600">
+                  Así evalúan los modelos el contenido que analizas. Cada criterio suma evidencia, no un veredicto.
+                </p>
+              </div>
+
+              <div
+                className="flex items-start gap-3 rounded-lg p-4 mb-4"
+                style={{ backgroundColor: 'rgba(59, 130, 246, 0.06)', border: '1px solid rgba(59, 130, 246, 0.2)' }}
+              >
+                <Info className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#3B82F6' }} />
+                <p className="text-xs leading-relaxed text-gray-700">
+                  Estos criterios son una <strong>guía de apoyo y prevención</strong>, no una afirmación de verdad ni
+                  una sentencia definitiva sobre el contenido. La herramienta señala patrones que suelen asociarse a
+                  la desinformación; <strong>es la persona usuaria quien debe corroborar la información con fuentes
+                  oficiales y tomar la decisión final.</strong>
+                </p>
+              </div>
+
+              <ol className="grid sm:grid-cols-2 gap-3">
+                {criterios.map((criterio, index) => (
+                  <li
+                    key={index}
+                    className="flex items-start gap-3 rounded-lg p-3"
+                    style={{ backgroundColor: '#FFFFFF', border: '1px solid #E9ECEF' }}
+                  >
+                    <span
+                      className="font-mono text-sm font-bold flex-shrink-0 w-6 h-6 rounded flex items-center justify-center"
+                      style={{ color: BRAND_ORANGE, backgroundColor: BRAND_ORANGE + '14' }}
+                    >
+                      {index + 1}
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{criterio.title}</p>
+                      <p className="text-xs mt-0.5 text-gray-600">{criterio.desc}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+
+              <div className="flex items-start gap-3 mt-4 pt-4" style={{ borderTop: '1px solid #E9ECEF' }}>
+                <Users className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#7A8290' }} />
+                <p className="text-xs leading-relaxed text-gray-600">
+                  La decisión de creer, dudar o compartir un contenido siempre es tuya. AMA LLU-IA solo facilita el
+                  trabajo de verificación.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <TrendingUp className="w-4 h-4" style={{ color: BRAND_ORANGE }} />
+              <h3 className="text-sm font-bold text-gray-900 tracking-wide">LO QUE YA SE HA VERIFICADO</h3>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Análisis Integral */}
+              <div
+                className="rounded-xl border p-6"
+                style={{
+                  backgroundColor: '#F8F9FA',
+                  borderColor: '#E9ECEF'
+                }}
+              >
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-base font-semibold text-gray-900">Análisis Integral</h3>
+                    <span className="text-xs font-mono text-gray-600">N = {totalAnalyzed}</span>
+                  </div>
+                  <p className="text-xs leading-relaxed text-gray-600">
+                    Distribución real de lo que has analizado en este navegador, según su nivel de veracidad
+                  </p>
+                </div>
+
+                {totalAnalyzed === 0 ? (
+                  <div className="rounded-lg p-6 text-center" style={{ backgroundColor: '#FFFFFF', border: '1px solid #E9ECEF' }}>
+                    <TrendingUp className="w-7 h-7 mx-auto mb-2 text-gray-400" />
+                    <p className="text-xs text-gray-500">
+                      Aún no hay análisis. Verifica tu primer contenido para ver estadísticas reales aquí.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="relative w-40 h-40">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={chartData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={45}
+                            outerRadius={70}
+                            paddingAngle={3}
+                            dataKey="value"
+                            stroke="none"
+                          >
+                            {chartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <span className="text-xl font-bold font-mono text-gray-900">{totalAnalyzed}</span>
+                        <span className="text-xs font-mono text-gray-500">total</span>
+                      </div>
+                    </div>
+
+                    <div className="w-full space-y-2">
+                      {chartData.map((item, index) => {
+                        const Icon = getStatusIcon(item.name.toLowerCase())
+                        return (
+                          <div key={index} className="flex items-center gap-2">
+                            <Icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: item.color }} />
+                            <div className="flex-1">
+                              <div className="flex items-baseline justify-between mb-0.5">
+                                <span className="text-xs text-gray-700">{item.name}</span>
+                                <span className="text-xs font-mono font-bold" style={{ color: item.color }}>{item.value}%</span>
+                              </div>
+                              <div className="h-1 rounded-full overflow-hidden" style={{ backgroundColor: '#E9ECEF' }}>
+                                <div
+                                  className="h-full rounded-full transition-all duration-700"
+                                  style={{
+                                    width: `${item.value}%`,
+                                    backgroundColor: item.color
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
+                    </div>
+                  </div>
+                )}
+              </div>
+
+<<<<<<< HEAD
               <div className="rounded-xl p-6" style={card}>
                 <h3 className="text-xs font-bold uppercase tracking-wider mb-4" style={{ color: C.textFaint }}>
                   Transcripción + Verificación
@@ -584,6 +1037,85 @@ function App() {
                 >
                   Buscar
                 </button>
+=======
+              {/* Tendencias actuales */}
+              <div
+                className="rounded-xl border p-6"
+                style={{
+                  backgroundColor: '#F8F9FA',
+                  borderColor: '#E9ECEF'
+                }}
+              >
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp className="w-5 h-5" style={{ color: BRAND_ORANGE }} />
+                    <h3 className="text-base font-semibold text-gray-900">Tendencias actuales</h3>
+                  </div>
+                  <p className="text-xs leading-relaxed text-gray-600">
+                    Tus análisis más recientes, del más nuevo al más antiguo
+                  </p>
+                </div>
+
+                {recentHistory.length === 0 ? (
+                  <div className="rounded-lg p-6 text-center" style={{ backgroundColor: '#FFFFFF', border: '1px solid #E9ECEF' }}>
+                    <Search className="w-7 h-7 mx-auto mb-2 text-gray-400" />
+                    <p className="text-xs text-gray-500">
+                      Todavía no hay contenido analizado. Usa "Verificar contenido ahora" para empezar.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {recentHistory.map((item, index) => {
+                      const Icon = getStatusIcon(item.status)
+                      return (
+                        <div
+                          key={item.id}
+                          className="rounded-lg p-3 transition-all hover:bg-opacity-80"
+                          style={{
+                            backgroundColor: '#FFFFFF',
+                            border: '1px solid #E9ECEF'
+                          }}
+                        >
+                          <div className="flex items-start gap-2">
+                            <span
+                              className="font-mono text-xs font-bold flex-shrink-0 w-5 h-5 rounded flex items-center justify-center mt-0.5"
+                              style={{
+                                color: BRAND_ORANGE,
+                                backgroundColor: BRAND_ORANGE + '14'
+                              }}
+                            >
+                              {index + 1}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs leading-relaxed truncate text-gray-900">
+                                {item.title}
+                              </p>
+                              <div className="flex items-center gap-3 mt-1">
+                                <div className="flex items-center gap-1">
+                                  <Icon className="w-3 h-3" style={{ color: getStatusColor(item.status) }} />
+                                  <span className="text-xs font-mono capitalize" style={{ color: getStatusColor(item.status) }}>
+                                    {item.status}
+                                  </span>
+                                </div>
+                                <span className="text-xs font-mono text-gray-600">
+                                  {item.type === 'link' ? 'Noticia' : 'Video/Audio'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                    <button
+                      onClick={() => { setActiveTab('auditor'); setActiveView('verificar') }}
+                      className="w-full text-center text-xs font-medium py-2 mt-1"
+                      style={{ color: BRAND_ORANGE }}
+                    >
+                      Ver historial completo en Auditor →
+                    </button>
+                  </div>
+                )}
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
               </div>
             </div>
           </div>
@@ -602,10 +1134,19 @@ function App() {
                     onClick={() => setActiveTab(tab.id)}
                     className="flex-1 px-3 py-3.5 text-xs md:text-sm font-medium transition-all duration-200 focus:outline-none"
                     style={{
+<<<<<<< HEAD
                       color: isActive ? C.navy : C.textMuted,
                       borderBottom: isActive ? `2px solid ${C.orange}` : '2px solid transparent',
                       backgroundColor: isActive ? C.navyMuted : 'transparent'
                     }}
+=======
+                      color: isActive ? BRAND_ORANGE : '#6B7280',
+                      borderBottom: isActive ? `2px solid ${BRAND_ORANGE}` : '2px solid transparent',
+                      backgroundColor: isActive ? BRAND_ORANGE + '0A' : 'transparent'
+                    }}
+                    onFocus={e => e.target.style.color = BRAND_ORANGE}
+                    onBlur={e => e.target.style.color = isActive ? BRAND_ORANGE : '#6B7280'}
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
                   >
                     <Icon className="inline-block w-4 h-4 mr-1.5 -mt-0.5" />
                     {tab.label}
@@ -619,6 +1160,7 @@ function App() {
               {activeTab === 'link' && (
                 <div className="space-y-5">
                   <div>
+<<<<<<< HEAD
                     <span className="text-xs font-mono uppercase tracking-wider block mb-1" style={{ color: C.textFaint }}>
                       URL de la noticia
                     </span>
@@ -636,13 +1178,52 @@ function App() {
                       />
                       <LinkIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: C.textFaint }} />
                     </div>
+=======
+                    <label className="block mb-2">
+                      <div className="mb-3">
+                        <span className="text-xs font-mono uppercase tracking-wider block mb-1 text-gray-600">
+                          URL de la noticia
+                        </span>
+                        <p className="text-xs text-gray-600">
+                          Pega el enlace de la noticia que deseas verificar
+                        </p>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="url"
+                          value={urlValue}
+                          onChange={e => setUrlValue(e.target.value)}
+                          placeholder="https://ejemplo.com/noticia-electoral"
+                          className="w-full px-4 py-3 pl-11 rounded-lg text-sm transition-all focus:outline-none font-mono"
+                          style={{
+                            backgroundColor: '#FFFFFF',
+                            border: '1px solid #E9ECEF',
+                            color: '#111827'
+                          }}
+                          onFocus={e => e.target.style.borderColor = BRAND_ORANGE}
+                          onBlur={e => e.target.style.borderColor = '#E9ECEF'}
+                        />
+                        <LinkIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      </div>
+                    </label>
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
                   </div>
 
                   <button
                     onClick={handleAnalyze}
                     disabled={analyzing}
+<<<<<<< HEAD
                     className="w-full px-6 py-3 rounded-lg font-semibold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                     style={{ backgroundColor: C.orange, color: '#FFFFFF' }}
+=======
+                    className="w-full px-6 py-3 rounded-lg font-semibold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    style={{
+                      backgroundColor: analyzing ? '#E9ECEF' : BRAND_ORANGE,
+                      color: analyzing ? '#6B7280' : '#FFFFFF',
+                      '--tw-ring-color': BRAND_ORANGE,
+                      '--tw-ring-offset-color': '#FFFFFF'
+                    }}
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
                   >
                     {analyzing ? (
                       <><Activity className="w-4 h-4 animate-spin" /> Analizando señal...</>
@@ -678,7 +1259,16 @@ function App() {
                   </p>
                   <div
                     className="rounded-lg p-8 text-center transition-all cursor-pointer"
+<<<<<<< HEAD
                     style={{ border: `2px dashed ${C.border}`, backgroundColor: C.bg }}
+=======
+                    style={{
+                      border: '2px dashed #16234E',
+                      backgroundColor: '#101B3D'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = BRAND_ORANGE}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = '#16234E'}
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <Upload className="w-10 h-10 mx-auto mb-3" style={{ color: C.textFaint }} />
@@ -698,9 +1288,15 @@ function App() {
                   </div>
 
                   <div className="flex items-center gap-3">
+<<<<<<< HEAD
                     <div className="flex-1 h-px" style={{ backgroundColor: C.border }} />
                     <span className="text-xs font-mono" style={{ color: C.textFaint }}>o pega un enlace</span>
                     <div className="flex-1 h-px" style={{ backgroundColor: C.border }} />
+=======
+                    <div className="flex-1 h-px" style={{ backgroundColor: '#16234E' }} />
+                    <span className="text-xs font-mono" style={{ color: '#7A8290' }}>o pega un enlace</span>
+                    <div className="flex-1 h-px" style={{ backgroundColor: '#16234E' }} />
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
                   </div>
 
                   <div className="relative">
@@ -710,7 +1306,17 @@ function App() {
                       onChange={e => setVideoUrl(e.target.value)}
                       placeholder="https://ejemplo.com/video.mp4"
                       className="w-full px-4 py-3 pl-11 rounded-lg text-sm transition-all focus:outline-none font-mono"
+<<<<<<< HEAD
                       style={{ backgroundColor: C.bg, border: `1px solid ${C.border}`, color: C.textPrimary }}
+=======
+                      style={{
+                        backgroundColor: '#101B3D',
+                        border: '1px solid #16234E',
+                        color: '#E8ECF1'
+                      }}
+                      onFocus={e => e.target.style.borderColor = BRAND_ORANGE}
+                      onBlur={e => e.target.style.borderColor = '#16234E'}
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
                     />
                     <LinkIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: C.textFaint }} />
                   </div>
@@ -718,8 +1324,18 @@ function App() {
                   <button
                     onClick={handleAnalyze}
                     disabled={analyzing}
+<<<<<<< HEAD
                     className="w-full px-6 py-3 rounded-lg font-semibold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                     style={{ backgroundColor: C.orange, color: '#FFFFFF' }}
+=======
+                    className="w-full px-6 py-3 rounded-lg font-semibold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    style={{
+                      backgroundColor: analyzing ? '#16234E' : BRAND_ORANGE,
+                      color: analyzing ? '#7A8290' : '#FFFFFF',
+                      '--tw-ring-color': BRAND_ORANGE,
+                      '--tw-ring-offset-color': '#101B3D'
+                    }}
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
                   >
                     {analyzing ? (
                       <><Activity className="w-4 h-4 animate-spin" /> Analizando señal...</>
@@ -735,11 +1351,225 @@ function App() {
                         <span className="text-xs" style={{ color: C.textMuted }}>{statusMsg || 'Procesando...'}</span>
                         <span className="text-xs font-mono" style={{ color: C.textMuted }}>{Math.min(Math.round(progress), 100)}%</span>
                       </div>
+<<<<<<< HEAD
                       <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: C.bg }}>
                         <div
                           className="h-full rounded-full transition-all duration-300"
                           style={{ width: `${Math.min(progress, 100)}%`, backgroundColor: C.orange }}
                         />
+=======
+
+                      {/* ===== BANNER DE VEREDICTO ===== */}
+                      <div className="rounded-xl border-2 p-4" style={{
+                        backgroundColor: analysisResult.is_ai_generated ? '#FEF2F2' : '#F0FDF4',
+                        borderColor: analysisResult.is_ai_generated ? '#E85D5D' : '#00C896'
+                      }}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            {analysisResult.is_ai_generated ? (
+                              <XCircle className="w-7 h-7" style={{ color: '#E85D5D' }} />
+                            ) : (
+                              <CheckCircle2 className="w-7 h-7" style={{ color: '#00C896' }} />
+                            )}
+                            <div>
+                              <h4 className="text-base font-bold text-gray-900">
+                                {analysisResult.is_ai_generated ? 'Contenido Sospechoso' : 'Contenido Auténtico'}
+                              </h4>
+                              <p className="text-xs text-gray-600">
+                                Procesado en {analysisResult.processing_time?.toFixed(1) || 'N/A'}s
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-2xl font-bold font-mono" style={{ color: analysisResult.is_ai_generated ? '#E85D5D' : '#00C896' }}>
+                              {(analysisResult.confidence * 100).toFixed(0)}%
+                            </div>
+                            <div className="text-xs text-gray-600">Fiabilidad</div>
+                          </div>
+                        </div>
+                        <div className="mt-2 h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#E9ECEF' }}>
+                          <div className="h-full rounded-full transition-all duration-1000" style={{
+                            width: `${analysisResult.confidence * 100}%`,
+                            backgroundColor: analysisResult.is_ai_generated ? '#E85D5D' : '#00C896'
+                          }} />
+                        </div>
+                      </div>
+
+                      {/* ===== RESUMEN DEL DISCURSO ===== */}
+                      {totalSegs > 0 && (
+                        <div className="rounded-xl border p-5" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
+                          <div className="flex items-center gap-2 mb-4">
+                            <div className="w-1 h-5 rounded-full" style={{ backgroundColor: BRAND_ORANGE }} />
+                            <h4 className="text-sm font-bold text-gray-900 tracking-wide">RESUMEN DEL DISCURSO</h4>
+                          </div>
+
+                          {/* Stats grid */}
+                          <div className="grid grid-cols-4 gap-3 mb-4">
+                            <div className="rounded-lg p-3 text-center" style={{ backgroundColor: '#FFFFFF' }}>
+                              <div className="text-xl font-bold font-mono text-gray-900">{totalSegs}</div>
+                              <div className="text-xs mt-1 text-gray-600">Afirmaciones</div>
+                            </div>
+                            <div className="rounded-lg p-3 text-center" style={{ backgroundColor: '#00C89610' }}>
+                              <div className="text-xl font-bold font-mono" style={{ color: '#00C896' }}>{verified}</div>
+                              <div className="text-xs mt-1" style={{ color: '#00C896' }}>Verificadas</div>
+                            </div>
+                            <div className="rounded-lg p-3 text-center" style={{ backgroundColor: '#E8A33D10' }}>
+                              <div className="text-xl font-bold font-mono" style={{ color: '#E8A33D' }}>{imprecise}</div>
+                              <div className="text-xs mt-1" style={{ color: '#E8A33D' }}>Imprecisas</div>
+                            </div>
+                            <div className="rounded-lg p-3 text-center" style={{ backgroundColor: '#E85D5D10' }}>
+                              <div className="text-xl font-bold font-mono" style={{ color: '#E85D5D' }}>{falseCount}</div>
+                              <div className="text-xs mt-1" style={{ color: '#E85D5D' }}>Falsas</div>
+                            </div>
+                          </div>
+
+                          {/* Stacked bar */}
+                          <div className="h-3 rounded-full overflow-hidden flex" style={{ backgroundColor: '#E9ECEF' }}>
+                            {verified > 0 && <div style={{ width: `${(verified / totalSegs) * 100}%`, backgroundColor: '#00C896' }} />}
+                            {imprecise > 0 && <div style={{ width: `${(imprecise / totalSegs) * 100}%`, backgroundColor: '#E8A33D' }} />}
+                            {falseCount > 0 && <div style={{ width: `${(falseCount / totalSegs) * 100}%`, backgroundColor: '#E85D5D' }} />}
+                            {unverified > 0 && <div style={{ width: `${(unverified / totalSegs) * 100}%`, backgroundColor: '#9CA3AF' }} />}
+                          </div>
+
+                          {/* Legend */}
+                          <div className="flex items-center gap-4 mt-3 flex-wrap">
+                            <span className="flex items-center gap-1.5 text-xs text-gray-600">
+                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#00C896' }} /> Verificadas
+                            </span>
+                            <span className="flex items-center gap-1.5 text-xs text-gray-600">
+                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#E8A33D' }} /> Imprecisas
+                            </span>
+                            <span className="flex items-center gap-1.5 text-xs text-gray-600">
+                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#E85D5D' }} /> Falsas
+                            </span>
+                            <span className="flex items-center gap-1.5 text-xs text-gray-600">
+                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#9CA3AF' }} /> Sin verificar
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ===== TRANSCRIPCIÓN + VERIFICACIÓN ===== */}
+                      {analysisResult.content_analysis?.has_transcription && analysisResult.content_analysis?.transcription?.text && (
+                        <div className="rounded-xl border p-5" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
+                          <div className="flex items-center gap-2 mb-4">
+                            <div className="w-1 h-5 rounded-full" style={{ backgroundColor: BRAND_ORANGE }} />
+                            <h4 className="text-sm font-bold text-gray-900 tracking-wide">TRANSCRIPCIÓN + VERIFICACIÓN</h4>
+                          </div>
+                          <div className="space-y-3">
+                            {segVs.length > 0 ? segVs.slice(0, 6).map((seg, idx) => {
+                              const minutes = Math.floor(seg.start / 60)
+                              const seconds = Math.floor(seg.start % 60)
+                              const timestamp = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+                              const labelColors = {
+                                'FALSO': '#E85D5D',
+                                'IMPRECISO': '#E8A33D',
+                                'ENGAÑOSO': '#E8A33D',
+                                'VERIFICADO': '#00C896',
+                                'DISPUTADO': '#3B82F6',
+                                'SIN_VERIFICAR': '#7A8290'
+                              }
+                              const color = labelColors[seg.label] || '#7A8290'
+                              return (
+                                <div key={idx} className="flex gap-3 pb-3" style={{ borderBottom: idx < 5 ? '1px solid #E9ECEF' : 'none' }}>
+                                  <span className="text-xs font-mono font-bold flex-shrink-0 pt-0.5" style={{ color: BRAND_ORANGE }}>{timestamp}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm leading-relaxed mb-1.5 text-gray-900">"{seg.text}"</p>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-xs px-2 py-0.5 rounded font-bold" style={{
+                                        backgroundColor: color + '20', color: color, border: `1px solid ${color}40`
+                                      }}>{seg.label}</span>
+                                      {seg.source !== 'N/A' && <span className="text-xs text-gray-600">↔ {seg.source}</span>}
+                                      {seg.fact_checks_found > 0 && <span className="text-xs text-gray-600">({seg.fact_checks_found} verif.)</span>}
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            }) : segs.slice(0, 6).map((segment, idx) => {
+                              const minutes = Math.floor(segment.start / 60)
+                              const seconds = Math.floor(segment.start % 60)
+                              const timestamp = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+                              return (
+                                <div key={idx} className="flex gap-3 pb-3" style={{ borderBottom: idx < 5 ? '1px solid #E9ECEF' : 'none' }}>
+                                  <span className="text-xs font-mono font-bold flex-shrink-0 pt-0.5" style={{ color: BRAND_ORANGE }}>{timestamp}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm leading-relaxed text-gray-900">"{segment.text?.trim()}"</p>
+                                    <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ backgroundColor: '#9CA3AF20', color: '#6B7280', border: '1px solid #9CA3AF40' }}>SIN_VERIFICAR</span>
+                                  </div>
+                                </div>
+                              )
+                            }) || (
+                              <div className="flex gap-3 pb-3">
+                                <span className="text-xs font-mono font-bold flex-shrink-0" style={{ color: BRAND_ORANGE }}>00:00</span>
+                                <p className="text-sm leading-relaxed text-gray-900">{analysisResult.content_analysis.transcription.text}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ===== VERIFICACIONES RELACIONADAS ===== */}
+                      {fcCount > 0 && (
+                        <div className="rounded-xl border p-5" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
+                          <div className="flex items-center gap-2 mb-4">
+                            <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#3B82F6' }} />
+                            <h4 className="text-sm font-bold text-gray-900 tracking-wide">VERIFICACIONES RELACIONADAS</h4>
+                            <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: '#3B82F620', color: '#3B82F6' }}>{fcCount} encontradas</span>
+                          </div>
+                          <div className="space-y-3">
+                            {fcs.slice(0, 4).map((fc, idx) => {
+                              const ratingLower = (fc.rating || '').toLowerCase()
+                              const isFalse = ratingLower.includes('false') || ratingLower.includes('falso')
+                              const isTrue = ratingLower.includes('true') || ratingLower.includes('verdadero')
+                              const ratingColor = isFalse ? '#E85D5D' : isTrue ? '#00C896' : '#E8A33D'
+                              return (
+                                <div key={idx} className="rounded-lg p-3" style={{ backgroundColor: '#FFFFFF' }}>
+                                  <p className="text-sm font-medium mb-2 text-gray-900">{fc.title}</p>
+                                  <div className="flex items-center gap-3 flex-wrap">
+                                    <span className="text-xs text-gray-600">📰 {fc.publisher}</span>
+                                    <span className="text-xs px-2 py-0.5 rounded font-semibold" style={{ backgroundColor: ratingColor + '20', color: ratingColor }}>
+                                      {fc.rating}
+                                    </span>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ===== INFO TÉCNICA ===== */}
+                      <div className="rounded-xl border p-4" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#9CA3AF' }} />
+                          <h4 className="text-xs font-bold text-gray-900 tracking-wide">INFO TÉCNICA</h4>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3 text-xs">
+                          <div className="rounded-lg p-2.5" style={{ backgroundColor: '#FFFFFF' }}>
+                            <p className="text-gray-600">Formato</p>
+                            <p className="font-mono font-bold text-gray-900 mt-1">{analysisResult.metadata?.format || 'N/A'}</p>
+                          </div>
+                          <div className="rounded-lg p-2.5" style={{ backgroundColor: '#FFFFFF' }}>
+                            <p className="text-gray-600">Duración</p>
+                            <p className="font-mono font-bold text-gray-900 mt-1">{analysisResult.metadata?.duration ? `${analysisResult.metadata.duration.toFixed(1)}s` : 'N/A'}</p>
+                          </div>
+                          <div className="rounded-lg p-2.5" style={{ backgroundColor: '#FFFFFF' }}>
+                            <p className="text-gray-600">Procesado</p>
+                            <p className="font-mono font-bold text-gray-900 mt-1">{analysisResult.processing_time?.toFixed(2) || 'N/A'}s</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    )
+                  })()}
+
+                  {/* Error */}
+                  {error && (
+                    <div className="mt-4 rounded-lg border p-4" style={{ backgroundColor: '#FEF2F2', borderColor: '#E85D5D' }}>
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#E85D5D' }} />
+                        <p className="text-xs" style={{ color: '#E85D5D' }}>{error}</p>
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
                       </div>
                       <p className="text-xs mt-2" style={{ color: C.textFaint }}>⏱ Esto puede tardar 1-3 minutos dependiendo del video</p>
                     </div>
@@ -1389,10 +2219,72 @@ function App() {
               {/* Auditor */}
               {activeTab === 'auditor' && (
                 <div className="space-y-4">
+<<<<<<< HEAD
                   <div className="mb-2">
                     <div className="flex items-center gap-2 mb-2">
                       <ClipboardList className="w-5 h-5" style={{ color: C.navy }} />
                       <h3 className="text-base font-semibold" style={{ color: C.textPrimary }}>Criterios de evaluación</h3>
+=======
+                  {/* Historial real de analisis (guardado en este navegador) */}
+                  <div className="mb-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      <ClipboardList className="w-5 h-5" style={{ color: BRAND_ORANGE }} />
+                      <h3 className="text-base font-semibold text-white">Historial de análisis</h3>
+                    </div>
+                    <p className="text-xs leading-relaxed" style={{ color: '#7A8290' }}>
+                      Registro de los links, noticias, videos y audios que ya analizaste en este navegador
+                    </p>
+                  </div>
+
+                  {history.length === 0 ? (
+                    <div className="rounded-lg p-6 text-center" style={{ backgroundColor: '#101B3D', border: '1px solid #16234E' }}>
+                      <ClipboardList className="w-7 h-7 mx-auto mb-2" style={{ color: '#7A8290' }} />
+                      <p className="text-xs" style={{ color: '#7A8290' }}>
+                        Todavía no has analizado ningún contenido. Los resultados aparecerán aquí automáticamente
+                        cada vez que uses Link Noticia o Video/Audio.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 mb-2">
+                      {history.map((item) => {
+                        const Icon = getStatusIcon(item.status)
+                        return (
+                          <div
+                            key={item.id}
+                            className="rounded-lg p-3"
+                            style={{ backgroundColor: '#101B3D', border: '1px solid #16234E' }}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <p className="text-sm flex-1 min-w-0 truncate" style={{ color: '#E8ECF1' }}>{item.title}</p>
+                              <span className="text-xs font-mono flex-shrink-0" style={{ color: '#7A8290' }}>
+                                {new Date(item.timestamp).toLocaleString('es-EC', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <Icon className="w-3 h-3" style={{ color: getStatusColor(item.status) }} />
+                              <span className="text-xs font-mono capitalize" style={{ color: getStatusColor(item.status) }}>
+                                {item.status}
+                              </span>
+                              <span className="text-xs font-mono" style={{ color: '#7A8290' }}>
+                                · {item.type === 'link' ? 'Noticia' : 'Video/Audio'}
+                              </span>
+                              {item.confidence !== null && (
+                                <span className="text-xs font-mono" style={{ color: '#7A8290' }}>
+                                  · {(item.confidence * 100).toFixed(0)}% confianza
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  <div className="mb-4 pt-2" style={{ borderTop: '1px solid #16234E' }}>
+                    <div className="flex items-center gap-2 mb-2 pt-2">
+                      <ClipboardList className="w-5 h-5" style={{ color: BRAND_ORANGE }} />
+                      <h3 className="text-base font-semibold text-white">Criterios de evaluación</h3>
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
                     </div>
                     <p className="text-xs leading-relaxed" style={{ color: C.textMuted }}>
                       Estos son los 5 criterios que utilizamos para verificar la autenticidad del contenido electoral
@@ -1402,12 +2294,27 @@ function App() {
                     {criterios.map((criterio, index) => (
                       <li
                         key={index}
+<<<<<<< HEAD
                         className="flex items-start gap-3 rounded-lg p-3"
                         style={{ backgroundColor: C.bg, border: `1px solid ${C.border}` }}
                       >
                         <span
                           className="font-mono text-sm font-bold flex-shrink-0 w-6 h-6 rounded flex items-center justify-center"
                           style={{ color: C.navy, backgroundColor: C.navyMuted }}
+=======
+                        className="flex items-start gap-3 rounded-lg p-3 transition-all"
+                        style={{
+                          backgroundColor: '#101B3D',
+                          border: '1px solid #16234E'
+                        }}
+                      >
+                        <span
+                          className="font-mono text-sm font-bold flex-shrink-0 w-6 h-6 rounded flex items-center justify-center"
+                          style={{
+                            color: BRAND_ORANGE,
+                            backgroundColor: BRAND_ORANGE + '14'
+                          }}
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
                         >
                           {index + 1}
                         </span>
@@ -1578,21 +2485,50 @@ function App() {
         {/* Status bar */}
         <div
           className="mt-3 flex items-center justify-between px-4 py-2.5 rounded-lg text-xs font-mono"
+<<<<<<< HEAD
           style={{ ...card, color: C.textMuted }}
         >
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: C.green, animation: 'pulse-dot 2s ease-in-out infinite' }} />
+=======
+          style={{
+            backgroundColor: BRAND_NAVY,
+            border: `1px solid ${BRAND_NAVY_SOFT}`,
+            color: '#7A8290'
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <div
+              className="w-1.5 h-1.5 rounded-full"
+              style={{
+                backgroundColor: BRAND_ORANGE,
+                animation: 'pulse-dot 2s ease-in-out infinite'
+              }}
+            />
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
             <span>Conectado</span>
           </div>
-          <span>AMA-LLU-IA v1.0 · MediaHack II</span>
+          <span>AMA LLU-IA v1.0 · MediaHack II</span>
         </div>
       </div>
 
       {/* Floating Chat Button */}
       <button
         onClick={() => setChatOpen(!chatOpen)}
+<<<<<<< HEAD
         className="fixed bottom-5 right-5 rounded-full flex items-center justify-center transition-all z-50 shadow-lg"
         style={{ width: '52px', height: '52px', backgroundColor: chatOpen ? C.navy : C.orange, color: '#FFFFFF' }}
+=======
+        className="fixed bottom-5 right-5 w-13 h-13 rounded-full flex items-center justify-center transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 z-50"
+        style={{
+          width: '52px',
+          height: '52px',
+          backgroundColor: chatOpen ? BRAND_NAVY_SOFT : BRAND_ORANGE,
+          color: chatOpen ? '#E8ECF1' : '#FFFFFF',
+          '--tw-ring-color': BRAND_ORANGE,
+          '--tw-ring-offset-color': BRAND_NAVY
+        }}
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
         aria-label={chatOpen ? 'Cerrar chat' : 'Abrir chat'}
       >
         {chatOpen ? <X className="w-5 h-5" /> : <MessageCircle className="w-5 h-5" />}
@@ -1601,11 +2537,28 @@ function App() {
       {/* Chat Panel */}
       {chatOpen && (
         <div
+<<<<<<< HEAD
           className="fixed bottom-20 right-5 w-[calc(100vw-2.5rem)] md:w-96 h-[420px] rounded-xl flex flex-col z-50 overflow-hidden shadow-xl"
           style={card}
         >
           <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: `1px solid ${C.border}`, backgroundColor: C.navy }}>
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: C.orange, animation: 'pulse-dot 2s ease-in-out infinite' }} />
+=======
+          className="fixed bottom-20 right-5 w-[calc(100vw-2.5rem)] md:w-96 h-[420px] rounded-xl flex flex-col z-50 overflow-hidden"
+          style={{
+            backgroundColor: BRAND_NAVY,
+            border: `1px solid ${BRAND_NAVY_SOFT}`
+          }}
+        >
+          <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: `1px solid ${BRAND_NAVY_SOFT}` }}>
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{
+                backgroundColor: BRAND_ORANGE,
+                animation: 'pulse-dot 2s ease-in-out infinite'
+              }}
+            />
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
             <h3 className="font-semibold text-sm text-white">Bot — preguntas ciudadanas</h3>
           </div>
 
@@ -1616,8 +2569,13 @@ function App() {
                   className="max-w-[80%] px-3.5 py-2.5 rounded-lg text-sm leading-relaxed"
                   style={
                     msg.role === 'user'
+<<<<<<< HEAD
                       ? { backgroundColor: C.orange, color: '#FFFFFF', fontWeight: 500 }
                       : { backgroundColor: C.bg, color: C.textPrimary, border: `1px solid ${C.border}` }
+=======
+                      ? { backgroundColor: BRAND_ORANGE, color: '#FFFFFF', fontWeight: 500 }
+                      : { backgroundColor: BRAND_NAVY_SOFT, color: '#E8ECF1', border: `1px solid ${BRAND_NAVY_SOFT}` }
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
                   }
                 >
                   {msg.text}
@@ -1627,7 +2585,11 @@ function App() {
             <div ref={chatEndRef} />
           </div>
 
+<<<<<<< HEAD
           <div className="p-3" style={{ borderTop: `1px solid ${C.border}` }}>
+=======
+          <div className="p-3" style={{ borderTop: `1px solid ${BRAND_NAVY_SOFT}` }}>
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
             <div className="flex gap-2">
               <input
                 type="text"
@@ -1635,13 +2597,31 @@ function App() {
                 onChange={e => setInputMessage(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
                 placeholder="Escribe tu pregunta..."
+<<<<<<< HEAD
                 className="flex-1 px-3 py-2.5 rounded-lg text-sm focus:outline-none"
                 style={{ backgroundColor: C.bg, border: `1px solid ${C.border}`, color: C.textPrimary }}
+=======
+                className="flex-1 px-3 py-2.5 rounded-lg text-sm focus:outline-none font-mono"
+                style={{
+                  backgroundColor: BRAND_NAVY_SOFT,
+                  border: `1px solid ${BRAND_NAVY_SOFT}`,
+                  color: '#E8ECF1'
+                }}
+                onFocus={e => e.target.style.borderColor = BRAND_ORANGE}
+                onBlur={e => e.target.style.borderColor = BRAND_NAVY_SOFT}
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
               />
               <button
                 onClick={handleSendMessage}
                 className="px-3 py-2.5 rounded-lg transition-all flex items-center justify-center"
+<<<<<<< HEAD
                 style={{ backgroundColor: C.orange, color: '#FFFFFF' }}
+=======
+                style={{
+                  backgroundColor: BRAND_ORANGE,
+                  color: '#FFFFFF'
+                }}
+>>>>>>> 9cefe0f93038c53f33fff52e342f11440e8a3e8e
                 aria-label="Enviar mensaje"
               >
                 <Send className="w-4 h-4" />

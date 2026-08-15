@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, HttpUrl
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Dict
 from datetime import datetime
 
 
@@ -61,6 +61,7 @@ class TranscriptionResult(BaseModel):
     duration: Optional[float] = Field(None, description="Audio duration in seconds")
     segments: Optional[List[dict]] = Field(None, description="Detailed transcription segments")
     segment_verifications: Optional[List[SegmentVerification]] = Field(None, description="Per-segment fact-check results")
+    deepgram_backup: Optional[Dict] = Field(None, description="Transcripcion de respaldo/verificacion generada con Deepgram (independiente de la transcripcion principal)")
 
 
 class FactCheckReview(BaseModel):
