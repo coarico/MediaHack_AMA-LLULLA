@@ -1010,14 +1010,25 @@ function App() {
                           </div>
                           <div className="text-right">
                             <div className="text-2xl font-bold font-mono" style={{ color: analysisResult.is_ai_generated ? '#E85D5D' : '#00C896' }}>
-                              {(analysisResult.confidence * 100).toFixed(0)}%
+                              {(() => {
+                                const isAI = analysisResult.is_ai_generated
+                                const conf = analysisResult.confidence
+                                const aiScore = isAI ? Math.round(conf * 100) : Math.round((1 - conf) * 100)
+                                return `${aiScore}%`
+                              })()}
                             </div>
-                            <div className="text-xs text-gray-600">Fiabilidad</div>
+                            <div className="text-xs text-gray-600">
+                              {analysisResult.is_ai_generated ? 'Probabilidad de IA' : 'Probabilidad de ser real'}
+                            </div>
                           </div>
                         </div>
                         <div className="mt-2 h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#E9ECEF' }}>
                           <div className="h-full rounded-full transition-all duration-1000" style={{
-                            width: `${analysisResult.confidence * 100}%`,
+                            width: `${(() => {
+                              const isAI = analysisResult.is_ai_generated
+                              const conf = analysisResult.confidence
+                              return isAI ? conf * 100 : (1 - conf) * 100
+                            })()}%`,
                             backgroundColor: analysisResult.is_ai_generated ? '#E85D5D' : '#00C896'
                           }} />
                         </div>
