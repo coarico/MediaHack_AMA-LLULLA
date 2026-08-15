@@ -173,10 +173,12 @@ function App() {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <img src={logo} alt="AMA-LLU-IA" className="w-10 h-10 rounded-lg flex-shrink-0 object-cover" />
+                <img src={logo} alt="AMA LLU-IA" className="w-10 h-10 rounded-lg flex-shrink-0 object-cover" />
                 <div>
-                  <h1 className="text-xl font-bold text-gray-900">AMA-LLU-IA</h1>
-                  <p className="text-xs text-gray-600">Verificador de contenido electoral</p>
+                  <h1 className="text-xl font-bold tracking-tight" style={{ color: BRAND_NAVY }}>
+                    AMA LLU-<span style={{ color: BRAND_ORANGE }}>IA</span>
+                  </h1>
+                  <p className="text-xs font-medium text-gray-600">Verificamos. Informamos. Empoderamos.</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
