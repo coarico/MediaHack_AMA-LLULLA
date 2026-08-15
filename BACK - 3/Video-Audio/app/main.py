@@ -181,10 +181,14 @@ async def perform_content_analysis(file_path: str, is_video: bool = False, sourc
         try:
             # Build search query from title or transcription
             if source_metadata and source_metadata.get('title'):
-                search_query = source_metadata['title']
+                # Clean title: remove channel suffix after | or -, limit to 80 chars
+                raw_title = source_metadata['title']
+                search_query = raw_title.split('|')[0].split(' - ')[0].strip()
+                if len(search_query) > 80:
+                    search_query = search_query[:80].strip()
             else:
-                # Use first 200 chars of transcription as query
-                search_query = text[:200].strip()
+                # Use first 100 chars of transcription as query
+                search_query = text[:100].strip()
             
             articles = await web_searcher.search_news(search_query, max_results=8)
             
