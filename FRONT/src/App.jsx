@@ -881,17 +881,8 @@ function App() {
                   {/* Resultados del análisis */}
                   {analysisResult && (() => {
                     const sm = analysisResult.metadata?.source_metadata
-                    const segVs = analysisResult.content_analysis?.transcription?.segment_verifications || []
-                    const segs = analysisResult.content_analysis?.transcription?.segments || []
                     const fcs = analysisResult.content_analysis?.fact_checking?.fact_checks || []
                     const fcCount = analysisResult.content_analysis?.fact_checking?.fact_checks_found || 0
-
-                    // Stats for speech summary
-                    const totalSegs = segVs.length || segs.length || 0
-                    const verified = segVs.filter(s => s.label === 'VERIFICADO').length
-                    const falseCount = segVs.filter(s => s.label === 'FALSO').length
-                    const imprecise = segVs.filter(s => s.label === 'IMPRECISO' || s.label === 'ENGAÑOSO').length
-                    const unverified = segVs.filter(s => s.label === 'SIN_VERIFICAR' || s.label === 'DISPUTADO').length
 
                     // Platform config
                     const platformConfig = {
@@ -1010,60 +1001,6 @@ function App() {
                         </div>
                       </div>
 
-                      {/* ===== RESUMEN DEL DISCURSO ===== */}
-                      {totalSegs > 0 && (
-                        <div className="rounded-xl border p-5" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
-                          <div className="flex items-center gap-2 mb-4">
-                            <div className="w-1 h-5 rounded-full" style={{ backgroundColor: BRAND_ORANGE }} />
-                            <h4 className="text-sm font-bold text-gray-900 tracking-wide">RESUMEN DEL DISCURSO</h4>
-                          </div>
-
-                          {/* Stats grid */}
-                          <div className="grid grid-cols-4 gap-3 mb-4">
-                            <div className="rounded-lg p-3 text-center" style={{ backgroundColor: '#FFFFFF' }}>
-                              <div className="text-xl font-bold font-mono text-gray-900">{totalSegs}</div>
-                              <div className="text-xs mt-1 text-gray-600">Afirmaciones</div>
-                            </div>
-                            <div className="rounded-lg p-3 text-center" style={{ backgroundColor: '#00C89610' }}>
-                              <div className="text-xl font-bold font-mono" style={{ color: '#00C896' }}>{verified}</div>
-                              <div className="text-xs mt-1" style={{ color: '#00C896' }}>Verificadas</div>
-                            </div>
-                            <div className="rounded-lg p-3 text-center" style={{ backgroundColor: '#E8A33D10' }}>
-                              <div className="text-xl font-bold font-mono" style={{ color: '#E8A33D' }}>{imprecise}</div>
-                              <div className="text-xs mt-1" style={{ color: '#E8A33D' }}>Imprecisas</div>
-                            </div>
-                            <div className="rounded-lg p-3 text-center" style={{ backgroundColor: '#E85D5D10' }}>
-                              <div className="text-xl font-bold font-mono" style={{ color: '#E85D5D' }}>{falseCount}</div>
-                              <div className="text-xs mt-1" style={{ color: '#E85D5D' }}>Falsas</div>
-                            </div>
-                          </div>
-
-                          {/* Stacked bar */}
-                          <div className="h-3 rounded-full overflow-hidden flex" style={{ backgroundColor: '#E9ECEF' }}>
-                            {verified > 0 && <div style={{ width: `${(verified / totalSegs) * 100}%`, backgroundColor: '#00C896' }} />}
-                            {imprecise > 0 && <div style={{ width: `${(imprecise / totalSegs) * 100}%`, backgroundColor: '#E8A33D' }} />}
-                            {falseCount > 0 && <div style={{ width: `${(falseCount / totalSegs) * 100}%`, backgroundColor: '#E85D5D' }} />}
-                            {unverified > 0 && <div style={{ width: `${(unverified / totalSegs) * 100}%`, backgroundColor: '#9CA3AF' }} />}
-                          </div>
-
-                          {/* Legend */}
-                          <div className="flex items-center gap-4 mt-3 flex-wrap">
-                            <span className="flex items-center gap-1.5 text-xs text-gray-600">
-                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#00C896' }} /> Verificadas
-                            </span>
-                            <span className="flex items-center gap-1.5 text-xs text-gray-600">
-                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#E8A33D' }} /> Imprecisas
-                            </span>
-                            <span className="flex items-center gap-1.5 text-xs text-gray-600">
-                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#E85D5D' }} /> Falsas
-                            </span>
-                            <span className="flex items-center gap-1.5 text-xs text-gray-600">
-                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#9CA3AF' }} /> Sin verificar
-                            </span>
-                          </div>
-                        </div>
-                      )}
-
                       {/* ===== TRANSCRIPCIÓN COMPLETA ===== */}
                       {analysisResult.content_analysis?.has_transcription && analysisResult.content_analysis?.transcription?.text && (
                         <div className="rounded-xl border p-5" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
@@ -1074,60 +1011,6 @@ function App() {
                           <p className="text-sm leading-relaxed text-gray-700" style={{ maxHeight: '300px', overflowY: 'auto' }}>
                             {analysisResult.content_analysis.transcription.text}
                           </p>
-                        </div>
-                      )}
-
-                      {/* ===== VERIFICACIÓN POR SEGMENTOS ===== */}
-                      {analysisResult.content_analysis?.has_transcription && (segVs.length > 0 || segs.length > 0) && (
-                        <div className="rounded-xl border p-5" style={{ backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }}>
-                          <div className="flex items-center gap-2 mb-4">
-                            <div className="w-1 h-5 rounded-full" style={{ backgroundColor: BRAND_ORANGE }} />
-                            <h4 className="text-sm font-bold text-gray-900 tracking-wide">VERIFICACIÓN POR SEGMENTOS</h4>
-                          </div>
-                          <div className="space-y-3">
-                            {segVs.length > 0 ? segVs.slice(0, 6).map((seg, idx) => {
-                              const minutes = Math.floor(seg.start / 60)
-                              const seconds = Math.floor(seg.start % 60)
-                              const timestamp = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-                              const labelColors = {
-                                'FALSO': '#E85D5D',
-                                'IMPRECISO': '#E8A33D',
-                                'ENGAÑOSO': '#E8A33D',
-                                'VERIFICADO': '#00C896',
-                                'DISPUTADO': '#3B82F6',
-                                'SIN_VERIFICAR': '#7A8290'
-                              }
-                              const color = labelColors[seg.label] || '#7A8290'
-                              return (
-                                <div key={idx} className="flex gap-3 pb-3" style={{ borderBottom: idx < 5 ? '1px solid #E9ECEF' : 'none' }}>
-                                  <span className="text-xs font-mono font-bold flex-shrink-0 pt-0.5" style={{ color: BRAND_ORANGE }}>{timestamp}</span>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm leading-relaxed mb-1.5 text-gray-900">"{seg.text}"</p>
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="text-xs px-2 py-0.5 rounded font-bold" style={{
-                                        backgroundColor: color + '20', color: color, border: `1px solid ${color}40`
-                                      }}>{seg.label}</span>
-                                      {seg.source !== 'N/A' && <span className="text-xs text-gray-600">↔ {seg.source}</span>}
-                                      {seg.fact_checks_found > 0 && <span className="text-xs text-gray-600">({seg.fact_checks_found} verif.)</span>}
-                                    </div>
-                                  </div>
-                                </div>
-                              )
-                            }) : segs.slice(0, 6).map((segment, idx) => {
-                              const minutes = Math.floor(segment.start / 60)
-                              const seconds = Math.floor(segment.start % 60)
-                              const timestamp = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-                              return (
-                                <div key={idx} className="flex gap-3 pb-3" style={{ borderBottom: idx < 5 ? '1px solid #E9ECEF' : 'none' }}>
-                                  <span className="text-xs font-mono font-bold flex-shrink-0 pt-0.5" style={{ color: BRAND_ORANGE }}>{timestamp}</span>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm leading-relaxed text-gray-900">"{segment.text?.trim()}"</p>
-                                    <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ backgroundColor: '#9CA3AF20', color: '#6B7280', border: '1px solid #9CA3AF40' }}>SIN_VERIFICAR</span>
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
                         </div>
                       )}
 
