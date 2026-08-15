@@ -15,6 +15,7 @@ from app.models import (
 from app.services.audio_analyzer import AudioAnalyzer
 from app.services.video_analyzer import VideoAnalyzer
 from app.services.transcription_service import TranscriptionService
+from app.services.deepgram_service import DeepgramTranscriptionService
 from app.services.content_analyzer import ContentAnalyzer
 from app.services.fact_checker import FactChecker
 from app.utils.file_handler import FileHandler
@@ -41,6 +42,7 @@ app.add_middleware(
 audio_analyzer = AudioAnalyzer()
 video_analyzer = VideoAnalyzer()
 transcription_service = TranscriptionService()
+deepgram_service = DeepgramTranscriptionService()
 content_analyzer = ContentAnalyzer()
 fact_checker = FactChecker()
 file_handler = FileHandler()
@@ -66,7 +68,25 @@ async def perform_content_analysis(file_path: str, is_video: bool = False) -> di
             transcription = await transcription_service.transcribe(file_path)
         
         text = transcription.get('text', '')
-        
+
+        # Deepgram como respaldo (si la transcripcion principal fallo/quedo vacia)
+        # o como doble verificacion (si la principal funciono). No afecta el
+        # flujo si DEEPGRAM_API_KEY no esta configurada.
+        deepgram_backup = None
+        if settings.deepgram_api_key:
+            try:
+                if is_video:
+                    deepgram_backup = await deepgram_service.transcribe_video(file_path)
+                else:
+                    deepgram_backup = await deepgram_service.transcribe(file_path)
+            except Exception as e:
+                print(f"ℹ️ Deepgram backup/verificacion no disponible: {e}")
+
+        if not text and deepgram_backup and deepgram_backup.get('text'):
+            print("⚠️ Transcripcion principal vacia, usando Deepgram como respaldo")
+            transcription = deepgram_backup
+            text = transcription['text']
+
         if not text:
             return {
                 'has_transcription': False,
@@ -135,7 +155,12 @@ async def perform_content_analysis(file_path: str, is_video: bool = False) -> di
             print(f"✅ Segment verification complete: {len(segment_verifications)} segments checked")
         
         transcription['segment_verifications'] = segment_verifications
-        
+
+        # Adjuntar la transcripcion de Deepgram como verificacion doble
+        # (solo si no fue ya usada como respaldo, es decir, si la principal si funciono)
+        if deepgram_backup and deepgram_backup.get('text') and transcription is not deepgram_backup:
+            transcription['deepgram_backup'] = deepgram_backup
+
         return {
             'has_transcription': True,
             'transcription': transcription,

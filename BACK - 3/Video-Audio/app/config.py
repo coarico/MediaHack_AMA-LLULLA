@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     # Speech-to-Text
     whisper_model: str = "base"  # tiny, base, small, medium, large
     whisper_language: str = "es"
+
+    # Speech-to-Text (Deepgram) - usado por TranscriptionService
+    deepgram_api_key: str = ""
+    deepgram_model: str = "nova-2"
+    deepgram_language: str = "es"
     
     # Content Analysis
     enable_fact_checking: bool = True
