@@ -15,6 +15,11 @@ SOURCE_PATTERNS = (
     "reporte",
 )
 
+SOURCE_WEIGHT = 60
+AUTHOR_WEIGHT = 15
+DATE_WEIGHT = 15
+STRUCTURE_WEIGHT = 10
+
 
 def evaluate_content_quality(article: ExtractedArticle) -> ContentQuality:
     text = article.text.strip()
@@ -24,25 +29,33 @@ def evaluate_content_quality(article: ExtractedArticle) -> ContentQuality:
     has_sources = any(pattern in _normalize(text) for pattern in SOURCE_PATTERNS)
     overlap_score = _title_body_overlap(article.title or "", text)
 
-    score = 100
-    if len(text) < 900:
-        score -= 25
-        warnings.append("El texto extraido es corto para un analisis robusto.")
-    if not has_author:
-        score -= 15
-        warnings.append("No se detecto autor o redaccion responsable.")
-    if not has_date:
-        score -= 15
-        warnings.append("No se detecto fecha de publicacion.")
-    if not has_sources:
-        score -= 20
+    score = 0
+    if has_sources:
+        score += SOURCE_WEIGHT
+    else:
         warnings.append("No se detectaron referencias claras a fuentes, documentos o informes.")
+
+    if has_author:
+        score += AUTHOR_WEIGHT
+    else:
+        warnings.append("No se detecto autor o redaccion responsable.")
+
+    if has_date:
+        score += DATE_WEIGHT
+    else:
+        warnings.append("No se detecto fecha de publicacion.")
+
+    structure_score = STRUCTURE_WEIGHT
+    if len(text) < 900:
+        structure_score -= 5
+        warnings.append("El texto extraido es corto para un analisis robusto.")
     if overlap_score < 0.15:
-        score -= 10
+        structure_score -= 3
         warnings.append("El titulo tiene baja coincidencia lexical con el cuerpo extraido.")
     if _has_sensational_style(article.title or ""):
-        score -= 10
+        structure_score -= 2
         warnings.append("El titulo usa senales de estilo sensacionalista.")
+    score += max(0, structure_score)
 
     return ContentQuality(
         has_author=has_author,
@@ -72,4 +85,3 @@ def _has_sensational_style(title: str) -> bool:
 
 def _normalize(value: str) -> str:
     return value.lower()
-
