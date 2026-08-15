@@ -9,47 +9,47 @@ import httpx
 
 from app.core.config import settings
 from app.schemas.news import KuybotFactCheckItem, KuybotResponse
+from app.services.research_classifier import get_research_classifier
 
 
-SYSTEM_PROMPT = """Eres Kuybot, asistente de investigación y verificación periodística de AMA LLU IA.
+SYSTEM_PROMPT = """Eres Kuybot, asistente de verificación periodística.
 
-Flujo operativo obligatorio:
-1) Lee la noticia auditada y la pregunta del usuario.
-2) Extrae los claims verificables de la noticia, uno por uno.
-3) Para cada claim identifica: entidades, evento, contexto temporal y tipo.
-4) Investiga cada claim de manera independiente con evidencia de:
-   - Google Custom Search (Google Search Engine)
-   - Fact Check Tools API
-   - Fuentes oficiales institucionales
-   - Fuentes relacionadas de la noticia
-5) Antes de declarar contradicción, verifica:
-   - mismo evento
-   - mismo periodo temporal
-   - misma entidad
-   - mismo contexto institucional
-6) Si una fuente pertenece a un evento anterior o distinto, solo úsala como contexto histórico, no como contradicción directa.
-7) Clasifica cada claim como: confirmado, contradicho, no confirmado o contexto insuficiente.
-8) No conviertas la noticia en un único bloque. Debes contrastar cada afirmación por separado.
-9) Produces la respuesta final con esta estructura exacta:
-   - Conclusión
-   - ¿Por qué se concluye así?
-   - Evidencia
-   - Fuentes
+Objetivo:
+- Entregar análisis útil para periodistas.
+- Diferenciar claramente: confirmado, contradicho, no confirmado y contexto insuficiente.
+- Nunca mezclar periodos distintos como contradicción directa.
+
+Formato obligatorio de salida:
+1. Resumen
+2. Explica cada claim diferente
+3. Diferencias clave detectadas
+4. Qué falta por confirmar
+5. Recomendación periodística inmediata
+6. Fuentes consultadas (con URL)
 
 Reglas:
-- No inventes fuentes, URLs, citas, fechas ni instituciones.
-- Si no hay evidencia suficiente, dilo claramente.
-- No digas que algo es falso solo porque no aparece una cifra o fecha concreta; di que no hubo evidencia suficiente para confirmarlo.
-- No generalices un error de un claim para declarar toda la noticia falsa.
-- Prioriza fuentes oficiales y verificadas sobre rumores o análisis no contrastados.
-- Usa una redacción breve, clara y útil para reportaje periodístico.
-- No muestres texto fijo, plantillas vacías ni mensajes predeterminados del sistema.
-- La respuesta final debe estar escrita como un análisis real del contexto, no como un chatbot genérico.
+- Escribe en español claro y profesional.
+- No inventes datos ni URLs.
+- Si no hay evidencia suficiente, dilo explícitamente.
+- Priorización de fuentes: oficial > verificación > medios.
 """
+
+
+def _is_person_profile_question(question: str | None) -> bool:
+    q = (question or "").lower()
+    person_markers = [
+        "quien es", "quién es", "who is", "qué es", "perfil", "biografia", "biografía",
+        "trabajo de", "funcion de", "cargo de", "rol de", "es un", "qué hace",
+        "qué papel tiene", "quién fue", "quién es el", "quien era"
+    ]
+    return any(marker in q for marker in person_markers)
 
 
 def _infer_question_intent(question: str) -> str:
     q = (question or "").lower()
+
+    if _is_person_profile_question(question):
+        return "person_profile"
 
     if any(term in q for term in ["es verdad", "verdad", "falso", "mentira", "confirmado", "desmentido", "verificado", "qué pasó", "qué ocurrió", "qué sucedió", "contrad", "compare", "diferencia", "evidencia", "respaldan", "apoyan", "coincide"]):
         return "verification"
@@ -69,6 +69,9 @@ def _infer_question_intent(question: str) -> str:
 def _classify_research_level(question: str | None) -> str:
     q = (question or "").lower()
 
+    if _is_person_profile_question(question):
+        return "level_1"
+
     if any(term in q for term in ["qué significa", "significado", "define", "explica", "resumen", "contexto", "qué es", "explica el concepto", "resumen del contexto"]):
         return "level_1"
 
@@ -84,6 +87,34 @@ def _classify_research_level(question: str | None) -> str:
     return "level_1"
 
 
+def _determine_research_strategy(payload: dict) -> dict:
+    """
+    Determine the research strategy based on query category and evidence hierarchy.
+    
+    Returns dict with category, hierarchy_order, and primary_operators.
+    """
+    classifier = get_research_classifier()
+    
+    question = payload.get("question") or ""
+    news = payload.get("news") or {}
+    topic = news.get("title") or ""
+    claims = [c.get("claim", "") for c in news.get("verifiable_claims", [])[:3]]
+    
+    classification = classifier.classify_query(
+        query=question,
+        topic=topic,
+        claims=[{"claim": c} for c in claims]
+    )
+    
+    return {
+        "category": classification.get("category", "general"),
+        "confidence": classification.get("confidence", 0.5),
+        "hierarchy_order": classification.get("hierarchy_order", [6, 3, 7, 5, 4, 8]),
+        "primary_operators": classification.get("primary_operators", []),
+        "keywords_matched": classification.get("keywords_matched", []),
+    }
+
+
 def _build_search_query(payload: dict) -> str:
     news = payload.get("news") or {}
     question = payload.get("question") or ""
@@ -91,6 +122,31 @@ def _build_search_query(payload: dict) -> str:
     claims = " ".join((news.get("main_claims") or [])[:3])
     audit = news.get("audit_summary") or ""
     return " ".join(part for part in [question, title, claims, audit] if part and str(part).strip())
+
+
+def _build_hierarchical_search_query(payload: dict, max_levels: int = 2) -> list[dict]:
+    """
+    Build a list of search queries ordered by evidence hierarchy.
+    
+    Returns list of {"query": str, "level": int, "level_name": str, "primary": bool}
+    """
+    classifier = get_research_classifier()
+    base_query = _build_search_query(payload)
+    
+    strategy = _determine_research_strategy(payload)
+    category = strategy.get("category", "general")
+    
+    queries = classifier.build_hierarchical_search_query(
+        base_query=base_query,
+        category=category,
+        max_levels=max_levels
+    )
+    
+    # Enrich each query with primary source indicator
+    for query in queries:
+        query["primary"] = query.get("level", 99) <= 3
+    
+    return queries
 
 
 def _extract_years(text: str | None) -> list[str]:
@@ -254,30 +310,48 @@ def _evaluate_claim_status(claim: dict, evidence: list[Any], official_sources: l
 
 
 def _build_claim_summary(payload: dict) -> str:
+    """Estructura claims evaluados sin frases repetidas."""
     claims = payload.get("claim_analysis") or []
     if not claims:
-        return "No se generó un resumen por claim para esta verificación."
-
+        return "No hay claims."
     lines = []
-    for claim in claims:
-        status = claim.get("status", {})
-        label = status.get("status", "no_confirmado") if isinstance(status, dict) else "no_confirmado"
-        reasoning = status.get("reasoning", "Sin justificación detallada.") if isinstance(status, dict) else "Sin justificación detallada."
-        lines.append(f"- {claim.get('claim') or 'Claim no identificado'} → {label}. {reasoning}")
+    status_emoji = {"confirmado": "✓", "contradicho": "✗", "no_confirmado": "?", "contexto_insuficiente": "?"}
+    for i, claim in enumerate(claims[:5], 1):
+        claim_text = claim.get("claim", "N/A")
+        status_dict = claim.get("status", {})
+        status_val = status_dict.get("status", "no_confirmado") if isinstance(status_dict, dict) else "no_confirmado"
+        reasoning = status_dict.get("reasoning", "") if isinstance(status_dict, dict) else ""
+        emoji = status_emoji.get(status_val, "?")
+        lines.append(f"{emoji} [{status_val.upper()}] {claim_text}")
+        if reasoning and reasoning.strip():
+            lines.append(f"   {reasoning[:150]}")
     return "\n".join(lines)
+
+
+def _format_short_url(url: str | None) -> str:
+    """Convierte URL en formato [Leer mas](url)."""
+    if not url:
+        return ""
+    return f"[Leer mas]({url})"
 
 
 async def ask_kuybot(question: str, news: dict | None, history: list[dict] | None = None) -> KuybotResponse:
     payload = _build_context(news, question, history or [])
     intent = _infer_question_intent(question)
     research_level = _classify_research_level(question)
+    research_strategy = _determine_research_strategy(payload)
+    
     payload["intent"] = intent
     payload["research_level"] = research_level
+    payload["research_strategy"] = research_strategy
     payload["search_query"] = _build_search_query(payload)
 
     fact_check: list[KuybotFactCheckItem] = []
     search_results: list[dict] = []
     structured_claims = _extract_claims_from_news(payload)
+
+    if intent == "person_profile":
+        return _build_person_profile_response(payload, fact_check, search_results)
 
     if research_level in {"level_2", "level_3"}:
         fact_check = await _search_fact_checks(payload)
@@ -315,27 +389,6 @@ async def ask_kuybot(question: str, news: dict | None, history: list[dict] | Non
         "research_level": research_level,
         "claims": payload["claim_analysis"],
     }
-
-    if research_level == "level_3" and payload.get("claim_analysis"):
-        claim_summary = _build_claim_summary(payload)
-        answer = (
-            "Conclusión\n"
-            "La verificación debe hacerse por claims, no por una sola conclusión global. El contraste entre fuentes debe respetar entidad, evento y temporalidad.\n\n"
-            "¿Por qué se concluye así?\n"
-            "- Los datos de 2023 o de otros periodos solo pueden usarse como contexto histórico, no como contradicción directa de un evento programado para 2026.\n"
-            "- Cuando la evidencia oficial o institucional refiere al mismo tipo de evento, pero en un periodo distinto, la respuesta correcta es 'contexto insuficiente' o 'no confirmado', no 'falso' ni 'inexistente'.\n\n"
-            "Evidencia\n"
-            f"{claim_summary}\n\n"
-            "Fuentes\n"
-            f"{_format_source_links(_unique_urls([item.get('url') for item in search_results if item.get('url')] + [item.url for item in fact_check if item.url] + [item.get('url') for item in official_sources if item.get('url')]))}"
-        )
-        return KuybotResponse(
-            answer=answer,
-            sources=_unique_urls([item.get('url') for item in search_results if item.get('url')] + [item.url for item in fact_check if item.url] + [item.get('url') for item in official_sources if item.get('url')])[:10],
-            fact_check=fact_check,
-            mode="fallback",
-            status="ok",
-        )
 
     if settings.gemini_api_key:
         try:
@@ -398,19 +451,30 @@ async def _ask_gemini(payload: dict, fact_check: list[KuybotFactCheckItem], sear
 
     client = genai.Client(api_key=settings.gemini_api_key)
     model_name = settings.gemini_model or "gemini-3.5-flash"
-    prompt = json.dumps(payload, ensure_ascii=False, indent=2)
-    full_prompt = SYSTEM_PROMPT + "\n\nINFORMACION CONTEXTUAL:\n" + prompt
+    
+    question = payload.get("question", "")
+    news_title = payload.get("news", {}).get("title", "")
+    claims_summary = _build_claim_summary(payload)
+    
+    # Gemini redacta un resumen técnico breve; la estructura final se arma localmente.
+    simple_prompt = f"""Pregunta del periodista: {question}
+Noticia: {news_title}
+
+Claims evaluados:
+{claims_summary}
+
+Instrucción:
+Redacta SOLO un resumen técnico breve (2 a 4 líneas) para alimentar una respuesta estructurada.
+No incluyas encabezados, ni bibliografía, ni listas largas."""
+    
+    full_prompt = SYSTEM_PROMPT + "\n\n" + simple_prompt
 
     response = client.models.generate_content(model=model_name, contents=full_prompt)
-    answer = getattr(response, "text", None) or (
+    model_summary = getattr(response, "text", None) or (
         response.candidates[0].content.parts[0].text if getattr(response, "candidates", None) else "No se pudo obtener respuesta del modelo."
     )
 
-    sources = _unique_urls(
-        [item.get("url") for item in search_results if item.get("url")] +
-        [item.url for item in fact_check if item.url] +
-        [item.get("url") for item in (payload.get("news", {}).get("related_news") or []) if item.get("url")]
-    )
+    answer, sources = _compose_structured_answer(payload, fact_check, search_results, model_summary)
 
     return KuybotResponse(
         answer=answer,
@@ -457,40 +521,78 @@ async def _search_web_results(payload: dict) -> list[dict]:
     if not settings.google_search_api_key or not settings.google_search_cx:
         return []
 
-    query = _build_search_query(payload)
-    if not query:
+    base_query = _build_search_query(payload)
+    if not base_query:
         return []
 
+    # Build hierarchical search queries
+    hierarchical_queries = _build_hierarchical_search_query(payload, max_levels=2)
+    
+    all_results = []
+    seen_urls = set()
+    
     try:
         async with httpx.AsyncClient(timeout=12) as client:
-            response = await client.get(
-                "https://www.googleapis.com/customsearch/v1",
-                params={
-                    "key": settings.google_search_api_key,
-                    "cx": settings.google_search_cx,
-                    "q": query,
-                    "num": 4,
-                },
-            )
-            if response.status_code != 200:
-                return []
-            items = response.json().get("items") or []
-            return [
-                {
-                    "title": item.get("title"),
-                    "url": item.get("link"),
-                    "snippet": item.get("snippet"),
-                    "source": item.get("displayLink"),
-                }
-                for item in items[:4]
-            ]
+            # Try primary sources first, then secondary
+            for query_item in hierarchical_queries:
+                search_query = query_item.get("query", "")
+                level = query_item.get("level", 99)
+                level_name = query_item.get("level_name", "")
+                
+                if not search_query:
+                    continue
+                
+                response = await client.get(
+                    "https://www.googleapis.com/customsearch/v1",
+                    params={
+                        "key": settings.google_search_api_key,
+                        "cx": settings.google_search_cx,
+                        "q": search_query,
+                        "num": 4,
+                    },
+                    timeout=10,
+                )
+                
+                if response.status_code != 200:
+                    continue
+                
+                items = response.json().get("items") or []
+                
+                for item in items[:4]:
+                    url = item.get("link")
+                    if url and url not in seen_urls:
+                        seen_urls.add(url)
+                        result = {
+                            "title": item.get("title"),
+                            "url": url,
+                            "snippet": item.get("snippet"),
+                            "source": item.get("displayLink"),
+                            "evidence_level": level,
+                            "evidence_level_name": level_name,
+                        }
+                        all_results.append(result)
+                
+                # If we found results at this level, we can stop searching lower levels
+                if all_results and level <= 3:
+                    break
+        
+        return all_results[:8]  # Return top 8 results from all levels
+        
     except Exception:
         return []
 
 
 def _extract_official_sources(payload: dict) -> list[dict]:
+    """
+    Extract and prioritize official sources using evidence hierarchy.
+    
+    Sources are ranked by evidence level (0-8), with lower numbers being more authoritative.
+    """
+    classifier = get_research_classifier()
     related = payload.get("news", {}).get("related_news") or []
-    priorities = {
+    
+    # Legacy priority mapping (fallback for unclassified sources)
+    legacy_priorities = {
         "gobierno": 0,
         "institucion": 1,
         "ministerio": 1,
@@ -506,14 +608,26 @@ def _extract_official_sources(payload: dict) -> list[dict]:
     ranked: list[tuple[int, dict]] = []
     for item in related:
         source_type = (item.get("source_type") or "").lower()
-        if not source_type:
-            continue
         source_name = item.get("source") or item.get("source_name") or "Fuente relacionada"
-        ranked.append((priorities.get(source_type, 99), {
+        url = item.get("url") or ""
+        
+        # Try to get evidence level from hierarchy
+        if url:
+            domain = url.split("://")[-1].split("/")[0]
+            evidence_level = classifier.get_evidence_level(domain)
+            if evidence_level is not None:
+                priority = evidence_level
+            else:
+                priority = legacy_priorities.get(source_type, 99)
+        else:
+            priority = legacy_priorities.get(source_type, 99) if source_type else 99
+        
+        ranked.append((priority, {
             "title": item.get("title"),
-            "url": item.get("url"),
+            "url": url,
             "source": source_name,
             "source_type": item.get("source_type"),
+            "evidence_level": priority if isinstance(priority, int) and priority <= 8 else None,
         }))
 
     ranked.sort(key=lambda row: row[0])
@@ -534,13 +648,156 @@ def _unique_urls(urls: list[str | None]) -> list[str]:
 
 def _format_source_links(urls: list[str]) -> str:
     if not urls:
-        return 'Sin fuentes disponibles.'
+        return ''
     items: list[str] = []
-    for url in urls[:5]:
-        host = urlparse(url).netloc or url
-        host = host.replace('www.', '')
-        items.append(f'[{host}]({url})')
+    for url in urls[:3]:
+        items.append(_format_short_url(url))
     return ' '.join(items)
+
+
+def _status_label(value: str) -> str:
+    mapping = {
+        "confirmado": "Confirmado",
+        "contradicho": "Contradicho",
+        "no_confirmado": "No confirmado",
+        "contexto_insuficiente": "Contexto insuficiente",
+    }
+    return mapping.get(value, value.replace("_", " ").title())
+
+
+def _build_claim_lines(payload: dict) -> list[str]:
+    claims = payload.get("claim_analysis") or []
+    if not claims:
+        return ["- No se detectaron claims verificables en este contexto."]
+
+    lines: list[str] = []
+    for claim in claims[:6]:
+        status = claim.get("status") if isinstance(claim.get("status"), dict) else {}
+        status_value = status.get("status", "no_confirmado")
+        reasoning = status.get("reasoning", "Sin detalle de verificación.")
+        lines.append(f"- [{_status_label(status_value)}] {claim.get('claim', 'Claim sin texto')}")
+        lines.append(f"  Evidencia: {reasoning}")
+    return lines
+
+
+def _build_journalist_insights(payload: dict) -> list[str]:
+    claims = payload.get("claim_analysis") or []
+    if not claims:
+        return [
+            "- No hay claims suficientes; primero necesitas más texto verificable de la noticia.",
+            "- Prioriza recopilar comunicado oficial y registro documental del hecho.",
+        ]
+
+    contradicted = sum(1 for c in claims if isinstance(c.get("status"), dict) and c["status"].get("status") == "contradicho")
+    no_confirmed = sum(1 for c in claims if isinstance(c.get("status"), dict) and c["status"].get("status") == "no_confirmado")
+    temporal_issues = sum(1 for c in claims if isinstance(c.get("status"), dict) and c["status"].get("status") == "contexto_insuficiente")
+
+    notes = [
+        f"- Claims con contradicción directa: {contradicted}.",
+        f"- Claims sin evidencia oficial suficiente: {no_confirmed}.",
+        f"- Claims con posible desfase temporal/contextual: {temporal_issues}.",
+        "- Siguiente paso recomendado: pedir documento, resolución o acta oficial para los claims no confirmados.",
+    ]
+    return notes
+
+
+def _build_sources_section(payload: dict, fact_check: list[KuybotFactCheckItem], search_results: list[dict]) -> tuple[list[str], list[str]]:
+    official = _extract_official_sources(payload)
+    related = payload.get("news", {}).get("related_news") or []
+
+    official_urls = [item.get("url") for item in official if item.get("url")]
+    fact_urls = [item.url for item in fact_check if item.url]
+    search_urls = [item.get("url") for item in search_results if item.get("url")]
+    related_urls = [item.get("url") for item in related if item.get("url")]
+
+    all_urls = _unique_urls(official_urls + fact_urls + search_urls + related_urls)
+
+    lines: list[str] = []
+    if official_urls:
+        for url in _unique_urls(official_urls)[:4]:
+            lines.append(f"- Oficial: {url}")
+    if fact_urls:
+        for url in _unique_urls(fact_urls)[:3]:
+            lines.append(f"- Fact-check: {url}")
+    if search_urls:
+        for url in _unique_urls(search_urls)[:3]:
+            lines.append(f"- Cobertura relacionada: {url}")
+    if not lines:
+        lines.append("- No se encontraron URLs verificables en esta consulta.")
+
+    return all_urls[:10], lines
+
+
+def _compose_structured_answer(payload: dict, fact_check: list[KuybotFactCheckItem], search_results: list[dict], summary_text: str) -> tuple[str, list[str]]:
+    claim_lines = _build_claim_lines(payload)
+    insight_lines = _build_journalist_insights(payload)
+    source_urls, source_lines = _build_sources_section(payload, fact_check, search_results)
+
+    claims = payload.get("claim_analysis") or []
+    contradicted = sum(1 for c in claims if isinstance(c.get("status"), dict) and c["status"].get("status") == "contradicho")
+    confirmed = sum(1 for c in claims if isinstance(c.get("status"), dict) and c["status"].get("status") == "confirmado")
+
+    differences_line = (
+        f"Se detectaron {contradicted} claim(s) contradicho(s) y {confirmed} claim(s) confirmado(s) en el mismo contexto temporal."
+        if claims else
+        "No hay suficientes claims evaluados para medir diferencias con precisión."
+    )
+
+    answer = (
+        "1. Resumen\n"
+        f"{summary_text.strip() if summary_text and summary_text.strip() else 'Se contrastó la noticia por claims y por temporalidad para evitar contradicciones falsas.'}\n\n"
+        "2. Explica cada claim diferente\n"
+        f"{'\n'.join(claim_lines)}\n\n"
+        "3. Diferencias clave detectadas\n"
+        f"- {differences_line}\n\n"
+        "4. Qué falta por confirmar\n"
+        f"- {next((line for line in insight_lines if 'sin evidencia oficial' in line.lower()), 'No hay registro oficial suficiente para algunos claims.').lstrip('- ').strip()}\n"
+        "- Para cerrar verificación, cruza cada cifra con boletín o acta oficial.\n\n"
+        "5. Recomendación periodística inmediata\n"
+        f"{'\n'.join(insight_lines)}\n\n"
+        "6. Fuentes consultadas (con URL)\n"
+        f"{'\n'.join(source_lines)}"
+    )
+
+    return answer, source_urls
+
+
+def _build_person_profile_response(payload: dict, fact_check: list[KuybotFactCheckItem] | None = None, search_results: list[dict] | None = None) -> KuybotResponse:
+    news = payload.get("news") or {}
+    title = news.get("title") or "La noticia analizada"
+    summary = news.get("summary") or "Sin resumen disponible."
+    question = payload.get("question") or ""
+    related = news.get("related_news") or []
+    official = _extract_official_sources(payload)
+    cited = _unique_urls(
+        [item.get("url") for item in related if item.get("url")] +
+        [item.url for item in (fact_check or []) if item.url] +
+        [item.get("url") for item in (search_results or []) if item.get("url")] +
+        [item.get("url") for item in official if item.get("url")]
+    )[:10]
+
+    person_name = re.search(r"(?:quien es|quién es|who is)\s+([A-ZÁÉÍÓÚÑa-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑa-záéíóúñ]+)*)", question or "")
+    subject = person_name.group(1).strip() if person_name else "la persona mencionada"
+
+    answer = (
+        f"Perfil público\n"
+        f"{subject} aparece en esta noticia en relación con la administración pública y el contexto político del caso.\n\n"
+        f"Qué dice la noticia\n"
+        f"{title}\n\n"
+        f"Resumen\n"
+        f"{summary}\n\n"
+        f"Qué falta verificar\n"
+        "Para confirmar su perfil completo, su cargo exacto o su trayectoria institucional, es necesario contrastar la información con fuentes oficiales, como comunicados del Gobierno, la Cancillería o documentos institucionales.\n\n"
+        f"Fuentes relevantes\n{_format_source_links(cited)}"
+    )
+
+    return KuybotResponse(
+        answer=answer,
+        sources=cited,
+        fact_check=fact_check or [],
+        mode="fallback",
+        status="ok",
+    )
 
 
 def _fallback_response(payload: dict, fact_check: list[KuybotFactCheckItem] | None = None, search_results: list[dict] | None = None) -> KuybotResponse:
@@ -560,35 +817,13 @@ def _fallback_response(payload: dict, fact_check: list[KuybotFactCheckItem] | No
 
     intent = _infer_question_intent(question)
 
-    source_links = _format_source_links(cited)
+    if intent == "person_profile":
+        return _build_person_profile_response(payload, fact_check, search_results)
 
-    if intent == "verification":
-        answer = (
-            f"🟡 REQUIERE VERIFICACIÓN\n\nLa afirmación sobre \"{title}\" debe evaluarse con contraste entre fuentes y no con una sola referencia. "
-            f"El resumen disponible indica que la historia requiere corroboración adicional.\n\n"
-            f"Por qué: \n• La noticia presenta afirmaciones relevantes.\n• El análisis previo marca la necesidad de contrastar fuentes.\n• No existe confirmación definitiva a partir de la evidencia disponible.\n\n"
-            f"Evidencia: {summary}\n\nFuentes: {source_links}"
-        )
-    elif intent in {"official_source", "sources"}:
-        official_list = ', '.join(item.get('source') or item.get('title') or 'fuente' for item in official[:3]) if official else 'fuentes relacionadas y oficiales'
-        answer = (
-            f"📚 FUENTES Y CONTEXTO\n\nLa noticia \"{title}\" ya tiene contexto de cobertura y fuentes relacionadas. "
-            f"El conjunto más relevante incluye: {official_list}.\n\n"
-            f"Esto ayuda a evaluar si la información se sostiene, requiere un matiz o necesita corroboración adicional.\n\nFuentes: {source_links}"
-        )
-    elif intent == "contrast":
-        answer = (
-            f"🟠 INFORMACIÓN CONTRADICTORIA\n\nLa investigación requiere comparar la fuente principal con la cobertura relacionada y con fuentes oficiales.\n\n"
-            f"La evidencia disponible sugiere que la historia puede tener varias versiones o interpretaciones, por lo que debe revisarse si existen contradicciones antes de asumir una conclusión final.\n\nFuentes: {source_links}"
-        )
-    else:
-        claim_text = claims[0].get("claim") if claims else "la afirmación central"
-        answer = (
-            f"🧭 CONTEXTO DE INVESTIGACIÓN\n\nEstoy revisando la noticia \"{title}\".\n\n"
-            f"La afirmación central a contrastar es: {claim_text}.\n\n"
-            f"Resumen del contexto: {summary}\n\n"
-            "Lo más útil aquí es separar hechos, interpretaciones y comentarios, luego contrastarlos con fuentes relacionadas y oficiales. El objetivo no es imponer una conclusión, sino mostrar qué está respaldado, qué está cuestionado y qué falta validar.\n\nFuentes: {source_links}"
-        )
+    summary_hint = summary if summary else f"Se revisó la noticia '{title}' para responder: {question}"
+    answer, composed_sources = _compose_structured_answer(payload, fact_check or [], search_results or [], summary_hint)
+    if composed_sources:
+        cited = _unique_urls(composed_sources + cited)[:10]
 
     return KuybotResponse(
         answer=answer,

@@ -1,0 +1,372 @@
+{
+  "evidence_hierarchy": {
+    "level_0_legal_primary": {
+      "name": "Fuentes Jurídicas Primarias",
+      "description": "Documentos oficiales del sistema legal",
+      "sources": [
+        {
+          "domain": "registrooficial.gob.ec",
+          "name": "Registro Oficial",
+          "use_for": ["leyes", "decretos", "acuerdos", "resoluciones", "reglamentos", "normativa"]
+        },
+        {
+          "domain": "registrooficial.gob.ec",
+          "name": "Ediciones del Registro Oficial",
+          "use_for": ["publicaciones_oficiales", "normativa_vigente"]
+        }
+      ],
+      "priority": 0,
+      "search_operators": ["site:registrooficial.gob.ec"]
+    },
+    "level_1_constitutional": {
+      "name": "Corte Constitucional",
+      "description": "Jurisprudencia y sentencias constitucionales",
+      "sources": [
+        {
+          "domain": "corteconstitucional.gob.ec",
+          "name": "Corte Constitucional del Ecuador",
+          "use_for": ["sentencias", "dictámenes", "jurisprudencia", "derechos_constitucionales"]
+        }
+      ],
+      "priority": 1,
+      "search_operators": ["site:corteconstitucional.gob.ec"]
+    },
+    "level_2_legislative": {
+      "name": "Asamblea Nacional / Legislatura",
+      "description": "Constitución, leyes, códigos y documentos legislativos",
+      "sources": [
+        {
+          "domain": "asambleanacional.gob.ec",
+          "name": "Asamblea Nacional",
+          "use_for": ["constitución", "leyes", "códigos", "proyectos_legislativos"]
+        }
+      ],
+      "priority": 2,
+      "search_operators": ["site:asambleanacional.gob.ec"]
+    },
+    "level_3_official_institutions": {
+      "name": "Instituciones Oficiales",
+      "description": "Ministerios, bancos centrales, organismos de control por tema",
+      "sources": [
+        {
+          "domain": "mef.gob.ec",
+          "name": "Ministerio de Economía y Finanzas",
+          "use_for": ["economía", "presupuesto", "finanzas_públicas", "política_fiscal"]
+        },
+        {
+          "domain": "bce.ec",
+          "name": "Banco Central del Ecuador",
+          "use_for": ["indicadores_económicos", "inflación", "tasa_cambio", "estadísticas_monetarias"]
+        },
+        {
+          "domain": "inec.gob.ec",
+          "name": "INEC",
+          "use_for": ["estadísticas", "censos", "indicadores", "datos_poblacionales"]
+        },
+        {
+          "domain": "cne.gob.ec",
+          "name": "Consejo Nacional Electoral",
+          "use_for": ["elecciones", "estadísticas_electorales", "procesos_comiciales"]
+        },
+        {
+          "domain": "trabajo.gob.ec",
+          "name": "Ministerio del Trabajo",
+          "use_for": ["empleo", "salarios", "legislación_laboral", "seguridad_social"]
+        },
+        {
+          "domain": "interior.gob.ec",
+          "name": "Ministerio del Interior",
+          "use_for": ["seguridad", "orden_público", "control_territorial"]
+        },
+        {
+          "domain": "salud.gob.ec",
+          "name": "Ministerio de Salud Pública",
+          "use_for": ["salud_pública", "epidemiología", "vacunación", "políticas_sanitarias"]
+        },
+        {
+          "domain": "educacion.gob.ec",
+          "name": "Ministerio de Educación",
+          "use_for": ["educación", "políticas_educativas", "currículum"]
+        },
+        {
+          "domain": "sri.gob.ec",
+          "name": "SRI",
+          "use_for": ["impuestos", "tributación", "aranceles"]
+        },
+        {
+          "domain": "presidencia.gob.ec",
+          "name": "Presidencia de la República",
+          "use_for": ["políticas_nacionales", "declaraciones_ejecutivas"]
+        },
+        {
+          "domain": "cpccs.gob.ec",
+          "name": "CPCCS",
+          "use_for": ["control_ciudadano", "designaciones", "evaluación_institucional"]
+        },
+        {
+          "domain": "defensoria.gob.ec",
+          "name": "Defensoría del Pueblo",
+          "use_for": ["derechos_humanos", "denuncias", "investigaciones"]
+        },
+        {
+          "domain": "sot.gob.ec",
+          "name": "SOT",
+          "use_for": ["transparencia", "información_pública"]
+        },
+        {
+          "domain": "sercop.gob.ec",
+          "name": "SERCOP",
+          "use_for": ["contratación_pública", "compras_estatales"]
+        },
+        {
+          "domain": "planificacion.gob.ec",
+          "name": "Secretaría Nacional de Planificación",
+          "use_for": ["planificación_nacional", "planes_desarrollo"]
+        }
+      ],
+      "priority": 3,
+      "search_operators": [
+        "site:mef.gob.ec",
+        "site:bce.ec",
+        "site:inec.gob.ec",
+        "site:cne.gob.ec",
+        "site:trabajo.gob.ec",
+        "site:interior.gob.ec",
+        "site:salud.gob.ec",
+        "site:educacion.gob.ec",
+        "site:sri.gob.ec",
+        "site:presidencia.gob.ec"
+      ]
+    },
+    "level_4_open_data": {
+      "name": "Datos Abiertos",
+      "description": "Datasets oficiales del Estado",
+      "sources": [
+        {
+          "domain": "datosabiertos.gob.ec",
+          "name": "Portal de Datos Abiertos del Ecuador",
+          "use_for": ["datos_públicos", "datasets", "indicadores_estadísticos"]
+        },
+        {
+          "domain": "sercop.gob.ec",
+          "name": "SERCOP - OCDS",
+          "use_for": ["contratación_pública", "compras_estatales_datos"]
+        }
+      ],
+      "priority": 4,
+      "search_operators": ["site:datosabiertos.gob.ec"]
+    },
+    "level_5_fact_checkers": {
+      "name": "Medios de Verificación",
+      "description": "Organizaciones especializadas en fact-checking",
+      "sources": [
+        {
+          "domain": "ecuadorchequea.org",
+          "name": "Ecuador Chequea",
+          "use_for": ["verificación", "desinformación", "hechos_virales"]
+        },
+        {
+          "domain": "lupamedia.com",
+          "name": "Lupa Media",
+          "use_for": ["investigación", "contenido_engañoso", "narrativas_falsas"]
+        }
+      ],
+      "priority": 5,
+      "search_operators": ["site:ecuadorchequea.org", "site:lupamedia.com"]
+    },
+    "level_6_traditional_media": {
+      "name": "Medios de Comunicación Tradicionales",
+      "description": "Medios de prensa consolidados",
+      "sources": [
+        {
+          "domain": "primicias.ec",
+          "name": "Primicias"
+        },
+        {
+          "domain": "eluniverso.com",
+          "name": "El Universo"
+        },
+        {
+          "domain": "elcomercio.com",
+          "name": "El Comercio"
+        },
+        {
+          "domain": "ecuavisa.com",
+          "name": "Ecuavisa"
+        },
+        {
+          "domain": "teleamazonas.com",
+          "name": "Teleamazonas"
+        },
+        {
+          "domain": "expreso.ec",
+          "name": "Expreso"
+        },
+        {
+          "domain": "metro.ec",
+          "name": "Metro Ecuador"
+        },
+        {
+          "domain": "extra.ec",
+          "name": "Extra"
+        },
+        {
+          "domain": "lahora.com",
+          "name": "La Hora"
+        },
+        {
+          "domain": "vistazo.com",
+          "name": "Vistazo"
+        }
+      ],
+      "priority": 6,
+      "search_operators": [
+        "site:primicias.ec OR site:eluniverso.com OR site:elcomercio.com OR site:ecuavisa.com"
+      ]
+    },
+    "level_7_native_digital": {
+      "name": "Medios Nativos Digitales",
+      "description": "Publicaciones digitales nativas",
+      "sources": [
+        {
+          "domain": "planv.com.ec",
+          "name": "Plan V"
+        },
+        {
+          "domain": "gkillcity.com",
+          "name": "GK"
+        },
+        {
+          "domain": "codigovidrio.ec",
+          "name": "Código Vidrio"
+        },
+        {
+          "domain": "bnperiodismo.com",
+          "name": "BN Periodismo"
+        },
+        {
+          "domain": "wambra.com",
+          "name": "Wambra"
+        },
+        {
+          "domain": "ecoamazonico.ec",
+          "name": "Eco Amazónico"
+        }
+      ],
+      "priority": 7,
+      "search_operators": ["site:planv.com.ec OR site:gkillcity.com OR site:wambra.com"]
+    },
+    "level_8_social_networks": {
+      "name": "Cuentas Digitales y Redes Sociales",
+      "description": "Publicaciones en redes sociales y cuentas digitales",
+      "sources": [
+        {
+          "domain": "twitter.com",
+          "name": "X/Twitter"
+        },
+        {
+          "domain": "instagram.com",
+          "name": "Instagram"
+        },
+        {
+          "domain": "facebook.com",
+          "name": "Facebook"
+        },
+        {
+          "domain": "tiktok.com",
+          "name": "TikTok"
+        }
+      ],
+      "priority": 8,
+      "notes": "Solo como señal inicial o detección de tendencias, nunca como evidencia definitiva"
+    }
+  },
+  "query_category_strategies": {
+    "legal": {
+      "description": "Preguntas sobre leyes, normas, decretos",
+      "order": [0, 1, 2, 3, 6, 7, 5],
+      "primary_operators": ["registrooficial", "corteconstitucional", "asambleanacional"],
+      "keywords": ["ley", "decreto", "norma", "reglamento", "acuerdo", "resolución"]
+    },
+    "constitutional": {
+      "description": "Preguntas sobre derechos constitucionales",
+      "order": [2, 1, 0, 3, 6, 7],
+      "primary_operators": ["asambleanacional", "corteconstitucional", "registrooficial"],
+      "keywords": ["constitución", "derecho", "garantía", "debido proceso"]
+    },
+    "political": {
+      "description": "Preguntas sobre política, gobierno",
+      "order": [3, 6, 7, 5, 4, 8],
+      "primary_operators": ["presidencia", "asambleanacional"],
+      "keywords": ["política", "gobierno", "ministro", "diputado", "elección"]
+    },
+    "economic": {
+      "description": "Preguntas sobre economía, finanzas",
+      "order": [3, 4, 6, 7, 5],
+      "primary_operators": ["mef", "bce", "inec"],
+      "keywords": ["economía", "inflación", "PIB", "presupuesto", "tasa cambio"]
+    },
+    "statistical": {
+      "description": "Preguntas que requieren cifras, porcentajes, tendencias",
+      "order": [3, 4, 6, 7, 5],
+      "primary_operators": ["inec", "bce", "datosabiertos"],
+      "keywords": ["porcentaje", "cifra", "estadística", "cuántos", "cuánta"]
+    },
+    "electoral": {
+      "description": "Preguntas sobre elecciones",
+      "order": [3, 6, 7, 5],
+      "primary_operators": ["cne"],
+      "keywords": ["elección", "voto", "candidato", "elecciones", "comicio"]
+    },
+    "security": {
+      "description": "Preguntas sobre seguridad, orden público",
+      "order": [3, 6, 7, 5],
+      "primary_operators": ["interior", "defensoría"],
+      "keywords": ["seguridad", "delito", "crimen", "violencia", "orden público"]
+    },
+    "health": {
+      "description": "Preguntas sobre salud pública",
+      "order": [3, 4, 6, 7, 5],
+      "primary_operators": ["salud"],
+      "keywords": ["salud", "enfermedad", "vacuna", "epidemia", "sanitario"]
+    },
+    "education": {
+      "description": "Preguntas sobre educación",
+      "order": [3, 6, 7, 5],
+      "primary_operators": ["educacion"],
+      "keywords": ["educación", "escuela", "universidad", "alumno", "docente"]
+    },
+    "labor": {
+      "description": "Preguntas sobre empleo, trabajo",
+      "order": [3, 4, 6, 7, 5],
+      "primary_operators": ["trabajo", "inec"],
+      "keywords": ["empleo", "desempleo", "salario", "trabajador", "laboral"]
+    },
+    "factcheck_desinformation": {
+      "description": "Preguntas sobre verificación de hechos o desinformación",
+      "order": [1, 3, 4, 5, 6, 7, 0, 2],
+      "primary_operators": ["ecuadorchequea", "lupamedia", "corteconstitucional"],
+      "keywords": ["¿es verdad", "verificar", "desinformación", "viral", "fake", "falso"]
+    },
+    "news_current_events": {
+      "description": "Preguntas sobre noticias recientes y acontecimiento",
+      "order": [6, 3, 4, 5, 7, 8],
+      "primary_operators": ["primicias", "eluniverso", "elcomercio"],
+      "keywords": ["noticia", "hoy", "ahora", "reciente", "acontecimiento"]
+    },
+    "general": {
+      "description": "Preguntas generales sin categoría específica",
+      "order": [3, 6, 7, 5, 4, 8],
+      "primary_operators": ["general"],
+      "keywords": []
+    }
+  },
+  "rules": {
+    "primary_source_priority": "When a primary source exists for the information type, always prioritize it over secondary sources",
+    "competence_principle": "Determine which source has direct competence over the information type, not just authority",
+    "temporal_context": "Consider whether the information is about past events (historical) or future events (requires official announcement)",
+    "evidence_corroboration": "For contradictions, require evidence from at least two independent primary sources before accepting as fact",
+    "editorial_use": "Use editorial alignment only to identify perspectives and possible biases, never to determine truthfulness",
+    "social_media_rule": "Social media content is only a starting point. Must find corroborating evidence from primary or secondary sources"
+  }
+}

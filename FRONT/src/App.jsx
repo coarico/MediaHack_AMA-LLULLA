@@ -1,7 +1,7 @@
 ﻿import { useState, useRef, useEffect } from 'react'
-import { MessageCircle, X, Send, Link as LinkIcon, Upload, ClipboardList, Search, AlertTriangle, CheckCircle2, XCircle, Activity, Info, TrendingUp, BookOpen, Home, Landmark, Scale, Users, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react'
+import { MessageCircle, X, Send, Link as LinkIcon, Upload, ClipboardList, Search, AlertTriangle, CheckCircle2, XCircle, Activity, Info, TrendingUp, BookOpen, Home, Landmark, Scale, Users, ArrowRight } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
-import { analyzeNewsUrl, getNewsAnalysis, askKuybot, analyzeMediaUrl, analyzeAudio, analyzeVideo } from './services/api'
+import { analyzeNewsUrl, getNewsAnalysis, askKuybot, analyzeMediaUrl, analyzeAudio, analyzeVideo, checkKuybotConnection } from './services/api'
 import logo from './assets/logo.jpeg'
 import kuybotMascot from './assets/KUYBOT.png'
 
@@ -10,279 +10,7 @@ const BRAND_ORANGE = '#F5822B'
 const BRAND_NAVY = '#101B3D'
 const BRAND_NAVY_SOFT = '#16234E'
 
-// ===== Terminos y Condiciones =====
-// TERMS_VERSION debe incrementarse cada vez que cambie el texto legal,
-// para que el modal se vuelva a mostrar a usuarios que ya habian aceptado una version anterior.
-const TERMS_VERSION = '2026-08-15'
-const TERMS_STORAGE_KEY = 'ama_llu_ia_terms_accepted_version'
-
-const TERMS_META = [
-  'Última actualización: 15 de agosto de 2026',
-  'Aplicativo: AMALLU-IA',
-  'Proyecto: MediaHack — OpenLab'
-]
-
-const TERMS_INTRO = [
-  'Bienvenido/a a AMALLU-IA, una herramienta desarrollada en el marco del proyecto MediaHack de OpenLab, orientada a apoyar el análisis, contraste y comprensión de información difundida en medios digitales y en entornos de internet.',
-  'Al acceder, utilizar o navegar por AMALLU-IA, el usuario declara haber leído, comprendido y aceptado los presentes Términos y Condiciones de Uso. Si no está de acuerdo con ellos, deberá abstenerse de utilizar el servicio.'
-]
-
-const TERMS_SECTIONS = [
-  {
-    title: '1. Descripción del servicio',
-    blocks: [
-      { type: 'p', text: 'AMALLU-IA es una solución tecnológica diseñada para ayudar a los usuarios a evaluar información mediante herramientas de análisis automatizado, procesamiento de lenguaje natural, inteligencia artificial y consulta de fuentes disponibles en internet.' },
-      { type: 'p', text: 'Entre sus funciones pueden incluirse, de manera no exhaustiva:' },
-      { type: 'ul', items: [
-        'Análisis de contenido informativo.',
-        'Contraste de información entre fuentes.',
-        'Identificación de posibles inconsistencias, señales de desinformación o contenido cuestionable.',
-        'Generación de resúmenes y contexto relacionado.',
-        'Búsqueda de información asociada.',
-        'Interacción mediante un asistente conversacional basado en inteligencia artificial.'
-      ] },
-      { type: 'p', text: 'El servicio tiene un carácter de apoyo a la comprensión informativa y no sustituye el criterio humano ni la valoración crítica del usuario.' }
-    ]
-  },
-  {
-    title: '2. Naturaleza de los resultados',
-    blocks: [
-      { type: 'p', text: 'Los resultados, análisis, recomendaciones, resúmenes, indicadores o respuestas generadas por AMALLU-IA tienen un carácter informativo, orientativo y de apoyo al análisis.' },
-      { type: 'p', text: 'No deben entenderse como:' },
-      { type: 'ul', items: [
-        'Verificación definitiva de verdad o falsedad.',
-        'Certificación de la autenticidad de una fuente.',
-        'Garantía de exactitud absoluta.',
-        'Sustituto del juicio crítico, la investigación periodística o la verificación documental.'
-      ] },
-      { type: 'p', text: 'Los resultados pueden verse afectados por:' },
-      { type: 'ul', items: [
-        'Limitaciones de las fuentes consultadas.',
-        'Calidad, disponibilidad o actualización de la información.',
-        'Error, sesgo o ambigüedad del contenido original.',
-        'Faltantes de contexto o información incompleta.',
-        'Restricciones técnicas del sistema.',
-        'Limitaciones de los modelos de inteligencia artificial.',
-        'Cambios posteriores en una noticia, publicación o fuente.'
-      ] },
-      { type: 'p', text: 'Por ello, el usuario debe verificar la información con fuentes primarias, confiables y actualizadas antes de asumirla como verdadera o actuar en consecuencia.' }
-    ]
-  },
-  {
-    title: '3. Inteligencia artificial y limitaciones',
-    blocks: [
-      { type: 'p', text: 'AMALLU-IA utiliza tecnologías de inteligencia artificial para procesar, interpretar y responder sobre información disponible en fuentes públicas y/o aportadas por el usuario.' },
-      { type: 'p', text: 'Estas tecnologías pueden producir:' },
-      { type: 'ul', items: [
-        'Respuestas incompletas.',
-        'Interpretaciones erróneas.',
-        'Información desactualizada.',
-        'Hallazgos no verificables.',
-        'Errores de contexto o de análisis.'
-      ] },
-      { type: 'p', text: 'El usuario reconoce y acepta que la inteligencia artificial no es infalible y puede presentar sesgos, limitaciones técnicas o errores de razonamiento.' },
-      { type: 'p', text: 'AMALLU-IA se esfuerza por mejorar la calidad de sus resultados mediante contraste de fuentes, análisis contextual y mecanismos de apoyo, pero no garantiza la exactitud absoluta ni la corrección de todos los resultados generados.' }
-    ]
-  },
-  {
-    title: '4. Fuentes de información y contenido externo',
-    blocks: [
-      { type: 'p', text: 'AMALLU-IA puede consultar, procesar, analizar o referenciar contenido proveniente de fuentes externas, incluyendo medios digitales, páginas web, APIs de terceros, documentos públicos o materiales disponibles en internet.' },
-      { type: 'p', text: 'La presencia o mención de una fuente en la plataforma no implica que AMALLU-IA garantice, avale, respalde o certifique la totalidad de su contenido ni la veracidad de cada información que la fuente publique.' },
-      { type: 'p', text: 'Las fuentes externas mantienen sus propios derechos, políticas de uso, condiciones de servicio y responsabilidades. AMALLU-IA no controla necesariamente el contenido, la actualización, la veracidad o la disponibilidad de dichas fuentes.' }
-    ]
-  },
-  {
-    title: '5. Uso responsable del servicio',
-    blocks: [
-      { type: 'p', text: 'El usuario se compromete a utilizar AMALLU-IA de manera responsable, ética y conforme a la legislación aplicable.' },
-      { type: 'p', text: 'Queda prohibido utilizar el servicio para:' },
-      { type: 'ul', items: [
-        'Difundir, generar o apoyar deliberadamente información falsa o engañosa.',
-        'Manipular resultados con fines de daño, odio, persecución o desinformación.',
-        'Amenazar, acosar, difamar, injuriar o vulnerar derechos de terceros.',
-        'Realizar actividades ilegales o contrarias a la normativa vigente.',
-        'Obtener acceso no autorizado a sistemas, APIs, datos o servicios.',
-        'Intentar vulnerar la seguridad, integridad o funcionamiento del aplicativo.',
-        'Usar los resultados como única base para decisiones con consecuencias relevantes o de impacto significativo.',
-        'Interferir con el rendimiento, estabilidad o disponibilidad del sistema.'
-      ] },
-      { type: 'p', text: 'AMALLU-IA puede restringir, suspender o cancelar el acceso de un usuario si detecta uso indebido, ilegal o incompatible con estos términos.' }
-    ]
-  },
-  {
-    title: '6. Contenido proporcionado por el usuario',
-    blocks: [
-      { type: 'p', text: 'El usuario puede introducir textos, enlaces, archivos, capturas, imágenes, videos u otros contenidos para su análisis.' },
-      { type: 'p', text: 'Al hacerlo, el usuario declara que:' },
-      { type: 'ul', items: [
-        'Tiene derecho a aportar dicho contenido.',
-        'Su uso para fines de análisis no infringe derechos de terceros.',
-        'No comparte información privada o sensible sin la debida autorización.',
-        'No utiliza el sistema para violar la privacidad de otras personas ni la normativa vigente.'
-      ] },
-      { type: 'p', text: 'El usuario es responsable del contenido que ingresa al sistema, así como de las consecuencias derivadas de su uso.' },
-      { type: 'p', text: 'AMALLU-IA no será responsable por el contenido suministrado directamente por el usuario ni por los efectos que dicho contenido pueda generar en terceros.' }
-    ]
-  },
-  {
-    title: '7. Protección de datos y privacidad',
-    blocks: [
-      { type: 'p', text: 'AMALLU-IA reconoce la importancia de la protección de datos personales y la confidencialidad de la información tratada mediante la plataforma.' },
-      { type: 'p', text: 'El servicio deberá operar conforme a la normativa aplicable en materia de protección de datos personales, así como a las políticas internas del proyecto.' },
-      { type: 'p', text: 'Se recomienda al usuario:' },
-      { type: 'ul', items: [
-        'No ingresar información personal sensible innecesaria.',
-        'No compartir datos de terceros sin consentimiento.',
-        'No utilizar el sistema para procesar información confidencial de forma irresponsable.'
-      ] },
-      { type: 'p', text: 'Cuando corresponda, el proyecto podrá informar al usuario sobre la finalidad del tratamiento de datos, plazos, almacenamiento, uso interno y mecanismos disponibles para ejercer derechos previstos por la normativa aplicable.' }
-    ]
-  },
-  {
-    title: '8. Seguridad y disponibilidad',
-    blocks: [
-      { type: 'p', text: 'AMALLU-IA implementa medidas técnicas y operativas razonables para proteger la integridad, confidencialidad y disponibilidad del servicio. Sin embargo, ningún sistema conectado a internet puede garantizar una seguridad absoluta.' },
-      { type: 'p', text: 'El equipo del proyecto no puede asegurar que el sistema esté libre de fallos, interrupciones, accesos no autorizados o errores técnicos.' },
-      { type: 'p', text: 'Por ello, el sistema puede experimentar:' },
-      { type: 'ul', items: [
-        'Interrupciones temporales.',
-        'Cambios de funcionamiento.',
-        'Errores o inconsistencias.',
-        'Despliegues de mejoras o correcciones.',
-        'Fallas de servicios externos o dependencias de terceros.',
-        'Problemas de conectividad o infraestructura.'
-      ] },
-      { type: 'p', text: 'AMALLU-IA puede modificar, suspender o retirar funcionalidades sin previo aviso, especialmente en fases de desarrollo, prueba o demostración.' }
-    ]
-  },
-  {
-    title: '9. Prototipo y naturaleza del proyecto',
-    blocks: [
-      { type: 'p', text: 'AMALLU-IA es un proyecto desarrollado dentro del marco del hackatón MediaHack de OpenLab y puede encontrarse en fase de prototipo, validación o mejora continua.' },
-      { type: 'p', text: 'Por tanto, el servicio puede estar sujeto a cambios, experimentación, evolución técnica y ajustes funcionales.' },
-      { type: 'p', text: 'La disponibilidad de una funcionalidad en una etapa concreta no garantiza que permanezca activa de manera indefinida ni que se mantenga en su versión actual.' }
-    ]
-  },
-  {
-    title: '10. Servicios de terceros y APIs',
-    blocks: [
-      { type: 'p', text: 'AMALLU-IA puede depender de herramientas, plataformas, APIs o servicios de terceros para funcionalidades de análisis, búsqueda, almacenamiento, autentificación, procesamiento de contenido o generación de respuestas.' },
-      { type: 'p', text: 'El uso de dichos servicios está sujeto a sus propios términos, condiciones, políticas y restricciones, que el usuario acepta de manera indirecta al utilizar AMALLU-IA.' },
-      { type: 'p', text: 'El proyecto no garantiza la continuidad, disponibilidad ni rendimiento de herramientas externas, ni asume responsabilidad por fallas, interrupciones o decisiones tomadas por terceros.' }
-    ]
-  },
-  {
-    title: '11. Propiedad intelectual',
-    blocks: [
-      { type: 'p', text: 'AMALLU-IA, su código, estructura, diseño, interfaz, marca, nombre, componentes desarrollados por el proyecto y su contenido original pertenecen a sus correspondientes titulares, conforme a la normativa aplicable.' },
-      { type: 'p', text: 'Los contenidos generados por terceros, incluidos textos, imágenes, videos, publicaciones, noticias, materiales periodísticos y demás fuentes citadas o consultadas, son propiedad de sus autores o titulares de derechos respectivos.' },
-      { type: 'p', text: 'AMALLU-IA no reclama propiedad sobre contenidos ajenos simplemente por referenciarlos, analizarlos o incluirlos en la plataforma, salvo que exista una expresión legal específica a favor del proyecto.' },
-      { type: 'p', text: 'El usuario no deberá reproducir, distribuir, reutilizar ni explotar el contenido o la interfaz del servicio sin la autorización correspondiente.' }
-    ]
-  },
-  {
-    title: '12. Limitación de responsabilidad',
-    blocks: [
-      { type: 'p', text: 'En la máxima medida permitida por la ley, AMALLU-IA y sus desarrolladores, colaboradores o instituciones asociadas no serán responsables por:' },
-      { type: 'ul', items: [
-        'Daños directos, indirectos, incidentales, consecuentes o punitivos derivados del uso del servicio.',
-        'Decisiones tomadas por el usuario sobre la base exclusiva de los resultados del sistema.',
-        'Pérdidas, perjuicios o consecuencias provocadas por información inexacta, incompleta o engañosa.',
-        'Fallas, errores, interrupciones o indisponibilidad del servicio.',
-        'Uso indebido del sistema por terceros.',
-        'Impactos derivados de contenidos o servicios de terceros.'
-      ] },
-      { type: 'p', text: 'El usuario reconoce que el uso del servicio es bajo su responsabilidad exclusiva y que debe aplicar criterio propio, verificaciones adicionales y juicio profesional cuando corresponda.' }
-    ]
-  },
-  {
-    title: '13. Exclusión de responsabilidad en decisiones de alto impacto',
-    blocks: [
-      { type: 'p', text: 'Los resultados generados por AMALLU-IA no deben utilizarse como única base para decisiones de alto impacto o consecuencias relevantes, tales como:' },
-      { type: 'ul', items: [
-        'Decisiones legales.',
-        'Decisiones médicas.',
-        'Decisiones financieras.',
-        'Evaluaciones de empleo o contratación.',
-        'Decisiones políticas o institucionales.',
-        'Acciones de reputación o sanción.',
-        'Cualquier decisión con efectos sustanciales para terceros.'
-      ] },
-      { type: 'p', text: 'El sistema es una herramienta de apoyo y no reemplaza la investigación humana, la valoración de expertos ni la verificación documental.' }
-    ]
-  },
-  {
-    title: '14. Modificaciones de los Términos',
-    blocks: [
-      { type: 'p', text: 'AMALLU-IA puede modificar estos Términos y Condiciones en cualquier momento para reflejar:' },
-      { type: 'ul', items: [
-        'Cambios funcionales del servicio.',
-        'Ajustes técnicos o legales.',
-        'Actualizaciones de políticas de privacidad o seguridad.',
-        'Cambios en servicios de terceros.',
-        'Mejora del funcionamiento del proyecto.'
-      ] },
-      { type: 'p', text: 'La versión vigente será la publicada dentro del aplicativo o en la plataforma donde se ofrezca el servicio. El uso continuado del servicio después de cambios implica la aceptación de los nuevos términos.' }
-    ]
-  },
-  {
-    title: '15. Terminación del acceso',
-    blocks: [
-      { type: 'p', text: 'AMALLU-IA puede, a su criterio, suspender o cancelar el acceso del usuario cuando se detecten:' },
-      { type: 'ul', items: [
-        'Incumplimiento de estos Términos.',
-        'Uso indebido o malicioso del servicio.',
-        'Violación de la normativa aplicable.',
-        'Riesgo para la integridad, seguridad o continuidad del proyecto.'
-      ] },
-      { type: 'p', text: 'El usuario podrá dejar de usar el servicio en cualquier momento.' }
-    ]
-  },
-  {
-    title: '16. Ley aplicable y jurisdicción',
-    blocks: [
-      { type: 'p', text: 'Estos Términos y Condiciones se rigen por la legislación aplicable en Ecuador, sin perjuicio de la normativa internacional o sectorial que pueda resultar aplicable en función del uso o de la ubicación del usuario y del proyecto.' },
-      { type: 'p', text: 'En caso de disputa, las partes podrán intentar una solución amistosa antes de recurrir a mecanismos jurisdiccionales.' }
-    ]
-  },
-  {
-    title: '17. Aceptación',
-    blocks: [
-      { type: 'p', text: 'Al aceptar estos Términos y Condiciones, al continuar utilizando AMALLU-IA o al acceder a sus funcionalidades, el usuario declara haber leído, entendido y aceptado todas las disposiciones aquí establecidas.' },
-      { type: 'p', text: 'Si el usuario no acepta estos términos, debe abstenerse de utilizar el servicio.' }
-    ]
-  },
-  {
-    title: '18. Contacto',
-    blocks: [
-      { type: 'p', text: 'Para consultas, sugerencias, reportes o comentarios sobre el uso del servicio, el usuario puede contactarse con el equipo del proyecto a través de los canales habilitados por MediaHack — OpenLab.' }
-    ]
-  }
-]
-
-const TERMS_CLOSING = []
-
 function App() {
-  const [termsAccepted, setTermsAccepted] = useState(() => {
-    try {
-      return localStorage.getItem(TERMS_STORAGE_KEY) === TERMS_VERSION
-    } catch {
-      return false
-    }
-  })
-  const [termsExpanded, setTermsExpanded] = useState(false)
-  const [termsChecked, setTermsChecked] = useState(false)
-
-  const handleAcceptTerms = () => {
-    try {
-      localStorage.setItem(TERMS_STORAGE_KEY, TERMS_VERSION)
-    } catch {
-      // localStorage no disponible (modo privado, cuota llena, etc.) - se volvera a pedir la proxima vez
-    }
-    setTermsAccepted(true)
-  }
-
   const [activeView, setActiveView] = useState('home')
   const [activeTab, setActiveTab] = useState('link')
   const [chatOpen, setChatOpen] = useState(false)
@@ -297,10 +25,10 @@ function App() {
   ])
   const [inputMessage, setInputMessage] = useState('')
   const [kuybotBusy, setKuybotBusy] = useState(false)
+  const [kuybotProbeBusy, setKuybotProbeBusy] = useState(false)
   const chatEndRef = useRef(null)
   const fileInputRef = useRef(null)
   const pollingRef = useRef(null)
-  const analyzeLockRef = useRef(false)
 
   const HISTORY_KEY = 'ama_llu_ia_history'
   const [history, setHistory] = useState(() => {
@@ -312,52 +40,16 @@ function App() {
     }
   })
 
-  const persistHistory = (list) => {
-    try {
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(list))
-    } catch {
-      try {
-        // Sin espacio para el detalle completo: guardamos solo el resumen de cada analisis
-        const lightweight = list.map(({ detail, ...rest }) => rest)
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(lightweight))
-      } catch {
-        // localStorage no disponible (modo privado, cuota llena, etc.) - no bloquea el analisis
-      }
-    }
-  }
-
   const addHistoryEntry = (entry) => {
     setHistory(prev => {
       const updated = [entry, ...prev].slice(0, 50)
-      persistHistory(updated)
+      try {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(updated))
+      } catch {
+        // localStorage no disponible (modo privado, cuota llena, etc.) - no bloquea el analisis
+      }
       return updated
     })
-  }
-
-  // Actualiza en su lugar una entrada ya guardada (usado cuando el analisis de una
-  // noticia sigue en 'processing' y luego termina con el valor final real).
-  const updateHistoryEntry = (id, patch) => {
-    setHistory(prev => {
-      const updated = prev.map(h => (h.id === id ? { ...h, ...patch } : h))
-      persistHistory(updated)
-      return updated
-    })
-  }
-
-  const [expandedHistoryIds, setExpandedHistoryIds] = useState(() => new Set())
-  const toggleHistoryExpanded = (id) => {
-    setExpandedHistoryIds(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  // Abre a Kuybot con una pregunta ya enfocada en el analisis guardado en Auditoria.
-  const handleAskKuybot = (item) => {
-    setInputMessage(`Cuéntame más sobre el análisis de: "${item.title}"`)
-    setChatOpen(true)
   }
 
   useEffect(() => {
@@ -369,11 +61,11 @@ function App() {
   }, [])
 
   const criterios = [
-    { title: 'Verificación de la fuente', desc: 'Coincidencia con medios Radar, registro interno o redes de verificación (IFCN)' },
-    { title: 'Confiabilidad técnica del URL', desc: 'HTTPS, redirecciones y accesibilidad del dominio' },
-    { title: 'Calidad y estructura del contenido', desc: 'Autoría, fecha, fuentes citadas y coherencia del texto' },
-    { title: 'Señales de manipulación y sesgo', desc: 'Clickbait, sesgo editorial y señales de manipulación detectadas' },
-    { title: 'Cruce con cobertura relacionada', desc: 'Fuentes independientes y medios Radar que cubren la misma noticia' }
+    { title: 'Fuente verificada', desc: 'Origen y autoría del contenido' },
+    { title: 'Coherencia del contenido', desc: 'Consistencia interna y contextual' },
+    { title: 'Cruce con medios oficiales', desc: 'Corroboración con fuentes institucionales' },
+    { title: '% campaña de bots/réplicas/fuentes', desc: 'Patrones de propagación artificial' },
+    { title: 'Viralidad vs veracidad', desc: 'Velocidad de difusión vs confirmación' }
   ]
 
   // Estadisticas reales derivadas del historial (nada de datos ficticios)
@@ -440,159 +132,15 @@ function App() {
     }
   }
 
-  const truncateText = (text, max = 500) => {
-    if (!text) return ''
-    return text.length > max ? `${text.slice(0, max)}…` : text
-  }
-
-  // Extrae del resultado completo del Back solo lo necesario para mostrar el
-  // detalle del analisis en Auditoria, evitando guardar textos muy largos (articulo completo, etc.)
-  const buildNewsHistoryDetail = (raw) => ({
-    kind: 'news',
-    reliability: raw.news_reliability_assessment || null,
-    sourceVerification: raw.source_verification || null,
-    sourceClassification: raw.source_classification ? {
-      communication_type: raw.source_classification.communication_type,
-      is_radar_media: raw.source_classification.is_radar_media,
-      explanation: raw.source_classification.explanation
-    } : null,
-    urlTrust: raw.url_trust_assessment || null,
-    contentClassification: raw.url_content_classification ? {
-      content_kind: raw.url_content_classification.content_kind,
-      is_news: raw.url_content_classification.is_news
-    } : null,
-    informationRelevance: raw.information_relevance ? {
-      domain: raw.information_relevance.domain,
-      is_relevant: raw.information_relevance.is_relevant,
-      how_it_relates: truncateText(raw.information_relevance.how_it_relates, 200)
-    } : null,
-    llmExecution: raw.llm_execution ? {
-      provider: raw.llm_execution.provider,
-      status: raw.llm_execution.status
-    } : null,
-    contentQuality: raw.content_quality || null,
-    analysis: raw.analysis ? {
-      summary: truncateText(raw.analysis.summary, 500),
-      topic: raw.analysis.topic,
-      category: raw.analysis.category,
-      sentiment: raw.analysis.sentiment,
-      bias_analysis: raw.analysis.bias_analysis,
-      clickbait: raw.analysis.clickbait,
-      credibility: raw.analysis.credibility,
-      manipulation_signals: raw.analysis.manipulation_signals || [],
-      recommendation: raw.analysis.recommendation,
-      main_claims: (raw.analysis.main_claims || []).slice(0, 6),
-      missing_context: raw.analysis.missing_context || []
-    } : null,
-    crossSource: raw.cross_source_check || null,
-    genderImpact: raw.gender_impact_assessment ? {
-      status_label: raw.gender_impact_assessment.status_label,
-      score: raw.gender_impact_assessment.score,
-      explanation: raw.gender_impact_assessment.explanation,
-      signals: (raw.gender_impact_assessment.signals || []).map(s => ({ label: s.label, severity: s.severity }))
-    } : null,
-    relatedNews: (raw.related_news || []).slice(0, 6).map(r => ({
-      title: r.title,
-      url: r.url,
-      source_name: r.source_name || r.source,
-      relation_label: r.relation_label
-    })),
-    claimContrasts: (raw.claim_contrasts || []).slice(0, 6).map(c => ({
-      claim: truncateText(c.claim, 200),
-      status_label: c.status_label,
-      explanation: truncateText(c.explanation, 200),
-      sources_consulted: (c.sources_consulted || []).slice(0, 3),
-      evidence_url: c.evidence_url || null
-    })),
-    informationGaps: (raw.analysis?.information_gaps || []).slice(0, 5).map(g => ({
-      missing_item: g.missing_item,
-      why_it_matters: truncateText(g.why_it_matters, 200),
-      suggested_verification: truncateText(g.suggested_verification, 200),
-      priority: g.priority
-    })),
-    audit: raw.audit ? {
-      priority: raw.audit.priority,
-      evidence_summary: raw.audit.evidence_summary,
-      evidence_items: (raw.audit.evidence_items || []).slice(0, 14).map(e => ({
-        type: e.type,
-        label: e.label,
-        value: truncateText(e.value, 160),
-        severity: e.severity
-      })),
-      reviewRecommendations: (
-        (raw.audit.presentation_blocks || []).find(b => b.title === 'Recomendaciones para revisar')?.items || []
-      ).slice(0, 6)
-    } : null,
-    article: raw.article ? {
-      title: raw.article.title,
-      author: raw.article.author,
-      published_at: raw.article.published_at,
-      source_domain: raw.article.source_domain
-    } : null
-  })
-
-  const buildMediaHistoryDetail = (raw) => ({
-    kind: 'media',
-    is_ai_generated: raw.is_ai_generated,
-    is_manipulated: raw.is_manipulated,
-    is_misinformation: raw.is_misinformation,
-    confidence: raw.confidence,
-    analysis_type: raw.analysis_type,
-    audioDetails: raw.audio_details || null,
-    videoDetails: raw.video_details || null,
-    metadata: raw.metadata || null,
-    processingTime: raw.processing_time,
-    contentAnalysis: raw.content_analysis ? {
-      fakeNews: raw.content_analysis.fake_news || null,
-      factChecking: raw.content_analysis.fact_checking ? {
-        fact_checks_found: raw.content_analysis.fact_checking.fact_checks_found,
-        fact_checks: (raw.content_analysis.fact_checking.fact_checks || []).slice(0, 5)
-      } : null,
-      extractedClaims: (raw.content_analysis.extracted_claims || []).slice(0, 6),
-      llmAnalysis: raw.content_analysis.llm_analysis || null,
-      transcriptionExcerpt: truncateText(raw.content_analysis.transcription?.text, 500)
-    } : null
-  })
-
-  // Arma los campos guardables del historial a partir de un resultado ya adaptado.
-  // `pending` marca que el analisis de noticia todavia sigue procesandose en el Back
-  // y que el porcentaje/detalle mostrado es provisional (se reemplaza al terminar).
-  const buildHistoryPayload = (type, sourceValue, result, pending = false) => {
-    const status = (result.is_ai_generated || result.is_misinformation)
-      ? 'falso'
-      : (result.confidence < 0.6 ? 'dudoso' : 'verificado')
-    const sourceTitle = result.metadata?.source_metadata?.title
-    const title = sourceTitle || (type === 'link' ? sourceValue : (selectedFile?.name || videoUrl)) || 'Contenido analizado'
-    const detail = type === 'link'
-      ? buildNewsHistoryDetail(result.raw_news || {})
-      : buildMediaHistoryDetail(result || {})
-    return {
-      type,
-      title,
-      source: type === 'link' ? sourceValue : (videoUrl || selectedFile?.name || ''),
-      status,
-      confidence: typeof result.confidence === 'number' ? result.confidence : null,
-      detail,
-      pending
-    }
-  }
-
-  const pollNewsAnalysis = (analysisId, sourceUrl, historyEntryId) => {
+  const pollNewsAnalysis = (analysisId) => {
     if (pollingRef.current) clearInterval(pollingRef.current)
     let attempts = 0
     pollingRef.current = setInterval(async () => {
       attempts += 1
       try {
         const updated = await getNewsAnalysis(analysisId)
-        const adapted = adaptNewsAnalysisResult(updated)
-        setAnalysisResult(adapted)
-        const stillProcessing = updated.status === 'processing'
-        if (!stillProcessing && historyEntryId) {
-          // El analisis ya termino en el Back: reemplazamos el valor provisional
-          // guardado al enviar la noticia por el resultado final real.
-          updateHistoryEntry(historyEntryId, buildHistoryPayload('link', sourceUrl, adapted, false))
-        }
-        if (!stillProcessing || attempts >= 20) {
+        setAnalysisResult(adaptNewsAnalysisResult(updated))
+        if (updated.status !== 'processing' || attempts >= 20) {
           clearInterval(pollingRef.current)
           pollingRef.current = null
         }
@@ -606,8 +154,6 @@ function App() {
   }
 
   const handleAnalyze = async () => {
-    if (analyzing || analyzeLockRef.current) return
-    analyzeLockRef.current = true
     setAnalyzing(true)
     setError(null)
     setAnalysisResult(null)
@@ -617,27 +163,13 @@ function App() {
     }
 
     try {
+      let result
+      
       if (activeTab === 'link' && urlValue) {
         const newsResponse = await analyzeNewsUrl(urlValue)
-        const result = adaptNewsAnalysisResult(newsResponse)
-        setAnalysisResult(result)
-
-        // Se guarda de inmediato para que aparezca en Auditoria apenas se envia la
-        // noticia; si el Back todavia la esta procesando, se marca como "pending" y
-        // se actualiza en su lugar con el valor final cuando termine el analisis.
-        const pending = newsResponse.status === 'processing'
-        const historyEntryId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-        addHistoryEntry({
-          id: historyEntryId,
-          timestamp: new Date().toISOString(),
-          ...buildHistoryPayload('link', urlValue, result, pending)
-        })
-        if (pending) pollNewsAnalysis(newsResponse.id, urlValue, historyEntryId)
-        return
-      }
-
-      let result
-      if (activeTab === 'video' && selectedFile) {
+        result = adaptNewsAnalysisResult(newsResponse)
+        if (newsResponse.status === 'processing') pollNewsAnalysis(newsResponse.id)
+      } else if (activeTab === 'video' && selectedFile) {
         const fileType = selectedFile.type
         if (fileType.startsWith('audio/')) {
           result = await analyzeAudio(selectedFile)
@@ -654,16 +186,26 @@ function App() {
       }
 
       setAnalysisResult(result)
+
+      // Registrar en el historial real (localStorage) para Auditor y Home
+      const status = (result.is_ai_generated || result.is_misinformation)
+        ? 'falso'
+        : (result.confidence < 0.6 ? 'dudoso' : 'verificado')
+      const sourceTitle = result.metadata?.source_metadata?.title
+      const title = sourceTitle || (activeTab === 'link' ? urlValue : (selectedFile?.name || videoUrl)) || 'Contenido analizado'
       addHistoryEntry({
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        timestamp: new Date().toISOString(),
-        ...buildHistoryPayload(activeTab, videoUrl || selectedFile?.name, result, false)
+        type: activeTab,
+        title,
+        source: activeTab === 'link' ? urlValue : (videoUrl || selectedFile?.name || ''),
+        status,
+        confidence: typeof result.confidence === 'number' ? result.confidence : null,
+        timestamp: new Date().toISOString()
       })
     } catch (err) {
       setError(err.message || 'Error al procesar el análisis')
       console.error('Error al analizar:', err)
     } finally {
-      analyzeLockRef.current = false
       setAnalyzing(false)
     }
   }
@@ -683,6 +225,7 @@ function App() {
     platform: currentNewsPayload.editorial_metadata?.platform || 'sitio web',
     publisher: currentNewsPayload.content_attribution?.publisher_name || currentNewsPayload.source_verification?.source_name || currentNewsPayload.article?.source_domain || 'Sin fuente',
     publicationDate: currentNewsPayload.editorial_metadata?.publication_date || currentNewsPayload.article?.published_at || 'Sin fecha detectada',
+    auditLabel: currentNewsPayload.risk_assessment?.level || currentNewsPayload.audit?.priority || 'sin dato',
     relatedSources: (currentNewsPayload.related_news || []).slice(0, 4).map(item => ({
       name: item.source_name || item.source || 'Fuente relacionada',
       url: item.url
@@ -728,6 +271,185 @@ function App() {
     }
   }
 
+  const handleCheckKuybotConnection = async () => {
+    if (kuybotProbeBusy || kuybotBusy) return
+
+    setKuybotProbeBusy(true)
+    setMessages(prev => [...prev, {
+      role: 'bot',
+      text: 'Diagnóstico temporal en curso: validando conexión Front -> Backend de Kuybot...',
+      sources: []
+    }])
+
+    try {
+      const probe = await checkKuybotConnection()
+      const summary = [
+        'Diagnóstico temporal de integración Kuybot',
+        `API base: ${probe.apiBaseUrl}`,
+        `Health: ${probe.health.ok ? 'OK' : 'ERROR'}${probe.health.status ? ` (${probe.health.status})` : ''}`,
+        `Kuybot endpoint: ${probe.kuybot.ok ? 'OK' : 'ERROR'}${probe.kuybot.status ? ` (${probe.kuybot.status})` : ''}`,
+        `Modo de respuesta: ${probe.kuybot.mode || 'sin dato'}`,
+        `Latencia total: ${probe.latencyMs ?? 'sin dato'} ms`,
+        `Detalle health: ${probe.health.message || 'sin detalle'}`,
+        `Detalle kuybot: ${probe.kuybot.message || 'sin detalle'}`,
+      ].join('\n')
+
+      setMessages(prev => [...prev, {
+        role: 'bot',
+        text: summary,
+        sources: []
+      }])
+    } catch (err) {
+      setMessages(prev => [...prev, {
+        role: 'bot',
+        text: `Falló el diagnóstico temporal de Kuybot: ${err?.message || 'error desconocido'}`,
+        sources: []
+      }])
+    } finally {
+      setKuybotProbeBusy(false)
+    }
+  }
+
+  const parseKuybotStructuredMessage = (text) => {
+    const normalized = String(text || '').replace(/\r\n/g, '\n')
+    const lines = normalized.split('\n')
+    const sections = []
+    let current = null
+
+    lines.forEach((rawLine) => {
+      const line = rawLine.trimEnd()
+      const headingMatch = line.match(/^(\d+)\.\s+(.+)$/)
+      if (headingMatch) {
+        if (current) sections.push(current)
+        current = { number: headingMatch[1], title: headingMatch[2], lines: [] }
+        return
+      }
+
+      if (!current) {
+        current = { number: '', title: 'Respuesta', lines: [] }
+      }
+      current.lines.push(line)
+    })
+
+    if (current) sections.push(current)
+    return sections
+  }
+
+  const getClaimTone = (line) => {
+    const normalized = line.toLowerCase()
+    if (normalized.includes('confirmado') && !normalized.includes('no confirmado')) {
+      return { bg: '#00C89618', color: '#008F6A', border: '#00C89640' }
+    }
+    if (normalized.includes('contradicho')) {
+      return { bg: '#E85D5D18', color: '#C53C3C', border: '#E85D5D40' }
+    }
+    if (normalized.includes('contexto insuficiente')) {
+      return { bg: '#3B82F618', color: '#1E4DB7', border: '#3B82F640' }
+    }
+    return { bg: '#E8A33D18', color: '#9A6300', border: '#E8A33D40' }
+  }
+
+  const renderRichLine = (line, idx) => {
+    const trimmed = line.trim()
+    if (!trimmed) return <div key={`space-${idx}`} className="h-1.5" />
+
+    const claimMatch = trimmed.match(/^[-*]\s+\[(.+?)\]\s+(.+)$/)
+    if (claimMatch) {
+      const tone = getClaimTone(claimMatch[1])
+      return (
+        <div key={`claim-${idx}`} className="rounded-lg p-2.5 mt-2" style={{ backgroundColor: '#F8FAFD', border: '1px solid #E7ECF5' }}>
+          <div className="flex items-start gap-2.5">
+            <span
+              className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide"
+              style={{ backgroundColor: tone.bg, color: tone.color, border: `1px solid ${tone.border}` }}
+            >
+              {claimMatch[1]}
+            </span>
+            <p className="text-[12px] leading-relaxed" style={{ color: BRAND_NAVY }}>{claimMatch[2]}</p>
+          </div>
+        </div>
+      )
+    }
+
+    if (/^evidencia:/i.test(trimmed)) {
+      return (
+        <p key={`ev-${idx}`} className="text-[11px] mt-1 pl-1" style={{ color: '#4B5563' }}>
+          {trimmed}
+        </p>
+      )
+    }
+
+    if (/^[-*]\s+/.test(trimmed)) {
+      return (
+        <div key={`bullet-${idx}`} className="flex items-start gap-2 mt-1">
+          <span className="w-1.5 h-1.5 rounded-full mt-1.5" style={{ backgroundColor: BRAND_ORANGE }} />
+          <p className="text-[12px] leading-relaxed" style={{ color: BRAND_NAVY }}>{trimmed.replace(/^[-*]\s+/, '')}</p>
+        </div>
+      )
+    }
+
+    const urlMatch = trimmed.match(/(https?:\/\/\S+)/)
+    if (urlMatch) {
+      const url = urlMatch[1].replace(/[),.;]+$/, '')
+      const prefix = trimmed.slice(0, trimmed.indexOf(url)).trim()
+      return (
+        <div key={`url-${idx}`} className="mt-1 text-[11px] leading-relaxed">
+          {prefix ? <span style={{ color: '#4B5563' }}>{prefix} </span> : null}
+          <a href={url} target="_blank" rel="noreferrer" className="underline break-all" style={{ color: BRAND_NAVY }}>
+            {url}
+          </a>
+        </div>
+      )
+    }
+
+    return (
+      <p key={`text-${idx}`} className="text-[12px] leading-relaxed mt-1" style={{ color: BRAND_NAVY }}>
+        {trimmed}
+      </p>
+    )
+  }
+
+  const renderStructuredAssistantMessage = (text) => {
+    const sections = parseKuybotStructuredMessage(text)
+    const hasFormalStructure = sections.some(section => section.number) && sections.length >= 3
+
+    if (!hasFormalStructure) {
+      return <p className="text-[12px] leading-relaxed whitespace-pre-line">{text}</p>
+    }
+
+    return (
+      <div className="space-y-2.5">
+        {sections.map((section, index) => (
+          <div
+            key={`${section.number}-${section.title}-${index}`}
+            className="rounded-xl p-2.5"
+            style={{
+              backgroundColor: section.number === '1' ? '#F2F6FF' : '#FFFFFF',
+              border: '1px solid #E7ECF5',
+            }}
+          >
+            <div className="flex items-center gap-2 mb-1.5">
+              {section.number ? (
+                <span
+                  className="w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center"
+                  style={{ backgroundColor: '#101B3D14', color: BRAND_NAVY }}
+                >
+                  {section.number}
+                </span>
+              ) : null}
+              <h4 className="text-[11px] font-black uppercase tracking-[0.08em]" style={{ color: BRAND_NAVY }}>
+                {section.title}
+              </h4>
+            </div>
+            <div>
+              {section.lines.map((line, idx) => renderRichLine(line, idx))}
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   const tabs = [
     { id: 'link', label: 'Link Noticia', icon: LinkIcon },
     { id: 'video', label: 'Video/Audio', icon: Upload },
@@ -752,6 +474,7 @@ function App() {
     if (!result) return null
 
     const score = result.news_reliability_assessment?.score ?? result.analysis?.credibility?.score ?? 0
+    const risk = result.risk_assessment?.level || 'sin dato'
     const article = result.article || {}
     const editorial = result.editorial_metadata || {}
     const source = result.source_verification || {}
@@ -767,6 +490,7 @@ function App() {
       { name: 'Confiabilidad', value: safeScore, color: safeScore >= 80 ? '#00C896' : safeScore >= 60 ? '#E8A33D' : '#E85D5D' },
       { name: 'Pendiente', value: Math.max(0, 100 - safeScore), color: '#E9ECEF' },
     ]
+    const riskColor = risk === 'bajo' ? '#00C896' : risk === 'medio' ? '#E8A33D' : '#E85D5D'
     const sourceLabel = source.source_name || editorial.publisher_name || article.source_domain || 'Sin fuente'
     const publisherType = editorial.publisher_type || source.source_type || 'sin clasificar'
     const contentType = result.content_classification?.type || urlCheck.content_type || 'sin dato'
@@ -818,6 +542,9 @@ function App() {
                 </span>
                 <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ backgroundColor: isElectoral ? '#00C89618' : '#E9ECEF', color: isElectoral ? '#008F6A' : '#6B7280' }}>
                   {isElectoral ? 'Electoral' : 'No electoral'}
+                </span>
+                <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ backgroundColor: riskColor + '18', color: riskColor }}>
+                  Riesgo {risk}
                 </span>
                 {isUpdatingRelated && (
                   <span className="text-xs px-2.5 py-1 rounded-full font-semibold flex items-center gap-1" style={{ backgroundColor: '#3B82F618', color: '#2563EB' }}>
@@ -995,504 +722,8 @@ function App() {
     )
   }
 
-  const detailCardStyle = { backgroundColor: '#0B1430', border: '1px solid #1C2A52' }
-  const detailLabelStyle = { color: '#E8ECF1' }
-  const detailMutedStyle = { color: '#7A8290' }
-
-  const CONTENT_KIND_LABELS = {
-    noticia: 'Noticia',
-    publicacion_red_social: 'Publicación social',
-    video_audio: 'Video / audio',
-    otro: 'Otro contenido',
-    indeterminado: 'Contenido por revisar'
-  }
-
-  const renderNewsHistoryDetail = (d) => {
-    const score = d.reliability?.score ?? null
-    const donutColor = score == null ? '#7A8290' : score >= 80 ? '#00C896' : score >= 60 ? '#E8A33D' : '#E85D5D'
-    const donutData = score == null ? [] : [
-      { name: 'Confiabilidad', value: score, color: donutColor },
-      { name: 'Pendiente', value: Math.max(0, 100 - score), color: '#1C2A52' }
-    ]
-    const contentKindLabel = CONTENT_KIND_LABELS[d.contentClassification?.content_kind] || 'Contenido por revisar'
-    const domain = d.informationRelevance?.domain
-    const domainLabel = domain === 'electoral' ? 'Electoral' : domain === 'no_electoral' ? 'No electoral' : 'Relevancia indeterminada'
-    const domainColor = domain === 'electoral' ? '#00C896' : '#7A8290'
-    const llmStatus = d.llmExecution?.status
-    const llmLabel = llmStatus === 'used' ? 'Análisis IA aplicado' : llmStatus === 'fallback' ? 'Fallback local' : llmStatus === 'failed' ? 'IA con error' : llmStatus === 'disabled' ? 'IA no usada' : 'Sin dato'
-
-    return (
-    <div className="mt-3 pt-3 space-y-2" style={{ borderTop: '1px solid #1C2A52' }}>
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ backgroundColor: BRAND_ORANGE + '22', color: BRAND_ORANGE }}>
-          {contentKindLabel}
-        </span>
-        <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ backgroundColor: domainColor + '22', color: domainColor }}>
-          {domainLabel}
-        </span>
-      </div>
-
-      {d.reliability && (
-        <div className="rounded-lg p-4" style={detailCardStyle}>
-          <div className="flex items-center gap-4">
-            <div className="w-24 h-24 relative flex-shrink-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={donutData} dataKey="value" innerRadius={30} outerRadius={44} startAngle={90} endAngle={450}>
-                    {donutData.map((entry) => <Cell key={entry.name} fill={entry.color} />)}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-lg font-bold font-mono" style={{ color: donutColor }}>{score}%</span>
-              </div>
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold" style={detailLabelStyle}>Confiabilidad</span>
-                <span className="text-xs font-mono capitalize" style={{ color: donutColor }}>{d.reliability.level}</span>
-              </div>
-              <p className="text-xs mt-1 leading-relaxed" style={detailMutedStyle}>{d.reliability.explanation}</p>
-            </div>
-          </div>
-          {d.reliability.factors?.length > 0 && (
-            <div className="mt-3 pt-3" style={{ borderTop: '1px solid #1C2A52' }}>
-              <span className="text-xs font-semibold" style={detailLabelStyle}>¿Por qué este porcentaje?</span>
-              <ul className="mt-1.5 space-y-0.5">
-                {d.reliability.factors.map((f, i) => (
-                  <li key={i} className="text-xs" style={detailMutedStyle}>· {f}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        <div className="rounded-lg p-3" style={detailCardStyle}>
-          <span className="text-xs" style={detailMutedStyle}>Fuente</span>
-          <p className="text-sm font-semibold mt-0.5 truncate" style={detailLabelStyle}>{d.sourceVerification?.source_name || d.article?.source_domain || 'Sin fuente'}</p>
-        </div>
-        <div className="rounded-lg p-3" style={detailCardStyle}>
-          <span className="text-xs" style={detailMutedStyle}>Impacto de género</span>
-          <p className="text-sm font-semibold mt-0.5 truncate" style={detailLabelStyle}>{d.genderImpact?.status_label || 'Sin señales relevantes'}</p>
-        </div>
-        <div className="rounded-lg p-3" style={detailCardStyle}>
-          <span className="text-xs" style={detailMutedStyle}>Análisis IA</span>
-          <p className="text-sm font-semibold mt-0.5 truncate" style={detailLabelStyle}>{llmLabel}</p>
-        </div>
-      </div>
-
-      {d.sourceVerification && (
-        <div className="rounded-lg p-3" style={detailCardStyle}>
-          <span className="text-xs font-semibold" style={detailLabelStyle}>Fuente</span>
-          <p className="text-xs mt-1" style={detailMutedStyle}>
-            Estado: <span style={detailLabelStyle}>{d.sourceVerification.status}</span>
-            {d.sourceVerification.source_name && <> · {d.sourceVerification.source_name}</>}
-          </p>
-          {d.sourceVerification.recommendation && (
-            <p className="text-xs mt-1 leading-relaxed" style={detailMutedStyle}>{d.sourceVerification.recommendation}</p>
-          )}
-        </div>
-      )}
-
-      {d.contentQuality && (
-        <div className="rounded-lg p-3" style={detailCardStyle}>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-semibold" style={detailLabelStyle}>Calidad del contenido</span>
-            <span className="text-xs font-mono font-bold" style={{ color: BRAND_ORANGE }}>{d.contentQuality.quality_score}/100</span>
-          </div>
-          <p className="text-xs" style={detailMutedStyle}>
-            Autor: {d.contentQuality.has_author ? 'Sí' : 'No'} · Fecha: {d.contentQuality.has_date ? 'Sí' : 'No'} · Fuentes citadas: {d.contentQuality.has_sources ? 'Sí' : 'No'}
-          </p>
-        </div>
-      )}
-
-      {d.analysis && (
-        <div className="rounded-lg p-3" style={detailCardStyle}>
-          <span className="text-xs font-semibold" style={detailLabelStyle}>Análisis del contenido</span>
-          {d.analysis.summary && <p className="text-xs mt-1 leading-relaxed" style={detailMutedStyle}>{d.analysis.summary}</p>}
-          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs" style={detailMutedStyle}>
-            {d.analysis.bias_analysis && <span>Sesgo: <span style={detailLabelStyle}>{d.analysis.bias_analysis.score}/100</span></span>}
-            {d.analysis.clickbait && <span>Clickbait: <span style={detailLabelStyle}>{d.analysis.clickbait.score}/100</span></span>}
-            {d.analysis.credibility && <span>Credibilidad: <span style={detailLabelStyle}>{d.analysis.credibility.score}/100 ({d.analysis.credibility.risk_level})</span></span>}
-          </div>
-          {d.analysis.manipulation_signals?.length > 0 && (
-            <p className="text-xs mt-1.5" style={{ color: '#E8A33D' }}>Señales de manipulación: {d.analysis.manipulation_signals.join(', ')}</p>
-          )}
-          {d.analysis.recommendation && (
-            <p className="text-xs mt-1.5 leading-relaxed" style={detailMutedStyle}><span style={detailLabelStyle}>Recomendación:</span> {d.analysis.recommendation}</p>
-          )}
-        </div>
-      )}
-
-      {d.crossSource && (
-        <div className="rounded-lg p-3" style={detailCardStyle}>
-          <span className="text-xs font-semibold" style={detailLabelStyle}>Cruce con cobertura relacionada</span>
-          <p className="text-xs mt-1" style={detailMutedStyle}>
-            Fuentes independientes: {d.crossSource.independent_sources_count} · Cobertura Radar: {d.crossSource.radar_media_coverage_count} · Estado: {d.crossSource.coverage_status}
-          </p>
-        </div>
-      )}
-
-      {d.genderImpact && d.genderImpact.signals?.length > 0 && (
-        <div className="rounded-lg p-3" style={detailCardStyle}>
-          <span className="text-xs font-semibold" style={detailLabelStyle}>Impacto de género</span>
-          <p className="text-xs mt-1" style={detailMutedStyle}>{d.genderImpact.status_label}</p>
-        </div>
-      )}
-
-      {d.relatedNews?.length > 0 && (
-        <div className="rounded-lg p-3" style={detailCardStyle}>
-          <span className="text-xs font-semibold" style={detailLabelStyle}>Noticias relacionadas</span>
-          <ul className="mt-1.5 space-y-1">
-            {d.relatedNews.map((r, i) => (
-              <li key={i} className="text-xs" style={detailMutedStyle}>· {r.title}{r.source_name ? ` (${r.source_name})` : ''}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {d.claimContrasts?.length > 0 && (
-        <div className="rounded-lg p-3" style={detailCardStyle}>
-          <span className="text-xs font-semibold" style={detailLabelStyle}>Afirmaciones contrastadas con fuentes</span>
-          <ul className="mt-1.5 space-y-2">
-            {d.claimContrasts.map((c, i) => (
-              <li key={i} className="text-xs" style={detailMutedStyle}>
-                <span style={detailLabelStyle}>{c.status_label}:</span> {c.claim}
-                {c.sources_consulted?.length > 0 && (
-                  <div className="mt-0.5">Fuentes consultadas: {c.sources_consulted.join(', ')}</div>
-                )}
-                {c.evidence_url && (
-                  <a href={c.evidence_url} target="_blank" rel="noreferrer" className="mt-0.5 inline-block underline" style={{ color: BRAND_ORANGE }}>
-                    Ver evidencia
-                  </a>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {d.informationGaps?.length > 0 && (
-        <div className="rounded-lg p-3" style={detailCardStyle}>
-          <span className="text-xs font-semibold" style={detailLabelStyle}>Vacíos de información y contexto faltante</span>
-          <ul className="mt-1.5 space-y-2">
-            {d.informationGaps.map((g, i) => (
-              <li key={i} className="text-xs" style={detailMutedStyle}>
-                <span style={detailLabelStyle}>{g.missing_item}</span>
-                {g.priority && (
-                  <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded uppercase tracking-wide" style={{ backgroundColor: BRAND_ORANGE + '22', color: BRAND_ORANGE }}>
-                    Prioridad {g.priority}
-                  </span>
-                )}
-                {g.why_it_matters && <div className="mt-0.5">{g.why_it_matters}</div>}
-                {g.suggested_verification && <div className="mt-0.5">Sugerencia: {g.suggested_verification}</div>}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {d.audit?.reviewRecommendations?.length > 0 && (
-        <div className="rounded-lg p-3" style={detailCardStyle}>
-          <span className="text-xs font-semibold" style={detailLabelStyle}>Recomendaciones para revisar</span>
-          <ul className="mt-1.5 space-y-1">
-            {d.audit.reviewRecommendations.map((item, i) => (
-              <li key={i} className="text-xs" style={detailMutedStyle}>· {typeof item === 'string' ? item : (item.title || item.missing_item || item.label || JSON.stringify(item))}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {d.audit && (
-        <div className="rounded-lg p-3" style={detailCardStyle}>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-semibold" style={detailLabelStyle}>Evidencia de auditoría</span>
-            {d.audit.priority && (
-              <span
-                className="text-[10px] px-1.5 py-0.5 rounded uppercase tracking-wide font-semibold"
-                style={{
-                  backgroundColor: (d.audit.priority === 'alta' || d.audit.priority === 'critica' ? '#E85D5D' : d.audit.priority === 'media' ? '#E8A33D' : '#00C896') + '22',
-                  color: d.audit.priority === 'alta' || d.audit.priority === 'critica' ? '#E85D5D' : d.audit.priority === 'media' ? '#E8A33D' : '#00C896'
-                }}
-              >
-                Prioridad {d.audit.priority}
-              </span>
-            )}
-          </div>
-          {d.audit.evidence_summary && (
-            <p className="text-xs leading-relaxed mb-2" style={detailMutedStyle}>{d.audit.evidence_summary}</p>
-          )}
-          {d.audit.evidence_items?.length > 0 && (
-            <ul className="space-y-1">
-              {d.audit.evidence_items.map((e, i) => {
-                const severityColor = e.severity === 'alta' ? '#E85D5D' : e.severity === 'media' ? '#E8A33D' : '#00C896'
-                return (
-                  <li key={i} className="text-xs flex items-start gap-1.5" style={detailMutedStyle}>
-                    <span className="w-1.5 h-1.5 rounded-full mt-1 flex-shrink-0" style={{ backgroundColor: severityColor }} />
-                    <span><span style={detailLabelStyle}>{e.label}:</span> {e.value}</span>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </div>
-      )}
-    </div>
-    )
-  }
-
-  const renderMediaHistoryDetail = (d) => (
-    <div className="mt-3 pt-3 space-y-2" style={{ borderTop: '1px solid #1C2A52' }}>
-      <div className="rounded-lg p-3" style={detailCardStyle}>
-        <span className="text-xs font-semibold" style={detailLabelStyle}>Resultado del análisis</span>
-        <p className="text-xs mt-1" style={detailMutedStyle}>
-          Generado por IA: {d.is_ai_generated ? 'Sí' : 'No'} · Manipulado: {d.is_manipulated ? 'Sí' : 'No'} · Desinformación: {d.is_misinformation ? 'Sí' : 'No'}
-        </p>
-      </div>
-
-      {d.contentAnalysis?.llmAnalysis && (
-        <div className="rounded-lg p-3" style={detailCardStyle}>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-semibold" style={detailLabelStyle}>Veredicto de IA (contexto y evidencia)</span>
-            {d.contentAnalysis.llmAnalysis.veredicto && (
-              <span
-                className="text-[10px] px-1.5 py-0.5 rounded uppercase tracking-wide font-semibold"
-                style={{
-                  backgroundColor: (d.contentAnalysis.llmAnalysis.veredicto === 'AUTÉNTICO' ? '#00C896' : d.contentAnalysis.llmAnalysis.veredicto === 'MIXTO' ? '#E8A33D' : '#E85D5D') + '22',
-                  color: d.contentAnalysis.llmAnalysis.veredicto === 'AUTÉNTICO' ? '#00C896' : d.contentAnalysis.llmAnalysis.veredicto === 'MIXTO' ? '#E8A33D' : '#E85D5D'
-                }}
-              >
-                {d.contentAnalysis.llmAnalysis.veredicto}{d.contentAnalysis.llmAnalysis.confianza != null ? ` · ${d.contentAnalysis.llmAnalysis.confianza}%` : ''}
-              </span>
-            )}
-          </div>
-          {d.contentAnalysis.llmAnalysis.resumen && (
-            <p className="text-xs leading-relaxed mb-1.5" style={detailMutedStyle}>{d.contentAnalysis.llmAnalysis.resumen}</p>
-          )}
-          {d.contentAnalysis.llmAnalysis.contexto_politico && (
-            <p className="text-xs mb-1"><span style={detailLabelStyle}>Contexto:</span> <span style={detailMutedStyle}>{d.contentAnalysis.llmAnalysis.contexto_politico}</span></p>
-          )}
-          {d.contentAnalysis.llmAnalysis.coincide_con_fuentes != null && (
-            <p className="text-xs mb-1" style={detailMutedStyle}>Coincide con fuentes consultadas: {d.contentAnalysis.llmAnalysis.coincide_con_fuentes ? 'Sí' : 'No'}</p>
-          )}
-          {d.contentAnalysis.llmAnalysis.indicios_ia && (
-            <p className="text-xs mb-1" style={detailMutedStyle}>Indicios de generación por IA: {d.contentAnalysis.llmAnalysis.indicios_ia}</p>
-          )}
-          {d.contentAnalysis.llmAnalysis.observaciones && (
-            <p className="text-xs" style={detailMutedStyle}>Observaciones: {d.contentAnalysis.llmAnalysis.observaciones}</p>
-          )}
-          {d.contentAnalysis.llmAnalysis.afirmaciones_clave?.length > 0 && (
-            <div className="mt-2 pt-2" style={{ borderTop: '1px solid #1C2A52' }}>
-              <span className="text-xs font-semibold" style={detailLabelStyle}>Afirmaciones clave contrastadas</span>
-              <ul className="mt-1 space-y-0.5">
-                {d.contentAnalysis.llmAnalysis.afirmaciones_clave.map((c, i) => (
-                  <li key={i} className="text-xs" style={detailMutedStyle}>· {c}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-
-      {d.contentAnalysis?.extractedClaims?.length > 0 && (
-        <div className="rounded-lg p-3" style={detailCardStyle}>
-          <span className="text-xs font-semibold" style={detailLabelStyle}>Afirmaciones extraídas</span>
-          <ul className="mt-1.5 space-y-0.5">
-            {d.contentAnalysis.extractedClaims.map((c, i) => (
-              <li key={i} className="text-xs" style={detailMutedStyle}>· {c}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {(d.audioDetails || d.videoDetails) && (
-        <div className="rounded-lg p-3" style={detailCardStyle}>
-          <span className="text-xs font-semibold" style={detailLabelStyle}>Señales técnicas</span>
-          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs" style={detailMutedStyle}>
-            {d.audioDetails?.spectral_score != null && <span>Espectral: {(d.audioDetails.spectral_score * 100).toFixed(0)}%</span>}
-            {d.audioDetails?.pitch_consistency != null && <span>Consistencia de tono: {(d.audioDetails.pitch_consistency * 100).toFixed(0)}%</span>}
-            {d.audioDetails?.ml_score != null && <span>Score ML: {(d.audioDetails.ml_score * 100).toFixed(0)}%</span>}
-            {d.videoDetails?.facial_consistency != null && <span>Consistencia facial: {(d.videoDetails.facial_consistency * 100).toFixed(0)}%</span>}
-            {d.videoDetails?.frame_artifacts != null && <span>Artefactos de fotograma: {(d.videoDetails.frame_artifacts * 100).toFixed(0)}%</span>}
-          </div>
-        </div>
-      )}
-
-      {d.contentAnalysis?.fakeNews && (
-        <div className="rounded-lg p-3" style={detailCardStyle}>
-          <span className="text-xs font-semibold" style={detailLabelStyle}>Clasificación de contenido</span>
-          <p className="text-xs mt-1" style={detailMutedStyle}>
-            {d.contentAnalysis.fakeNews.label || (d.contentAnalysis.fakeNews.is_fake_news ? 'Posible desinformación' : 'Sin indicios de desinformación')} · {(d.contentAnalysis.fakeNews.confidence * 100).toFixed(0)}% confianza
-          </p>
-          {d.contentAnalysis.fakeNews.details && (
-            <p className="text-xs mt-1 leading-relaxed" style={detailMutedStyle}>{d.contentAnalysis.fakeNews.details}</p>
-          )}
-        </div>
-      )}
-
-      {d.contentAnalysis?.transcriptionExcerpt && (
-        <div className="rounded-lg p-3" style={detailCardStyle}>
-          <span className="text-xs font-semibold" style={detailLabelStyle}>Transcripción</span>
-          <p className="text-xs mt-1 leading-relaxed" style={detailMutedStyle}>{d.contentAnalysis.transcriptionExcerpt}</p>
-        </div>
-      )}
-
-      {d.contentAnalysis?.factChecking?.fact_checks?.length > 0 && (
-        <div className="rounded-lg p-3" style={detailCardStyle}>
-          <span className="text-xs font-semibold" style={detailLabelStyle}>Verificaciones encontradas</span>
-          <ul className="mt-1.5 space-y-1">
-            {d.contentAnalysis.factChecking.fact_checks.map((f, i) => (
-              <li key={i} className="text-xs" style={detailMutedStyle}>· {f.title || f.claim_text || 'Verificación'}{f.publisher ? ` (${f.publisher})` : ''}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {d.metadata && (
-        <div className="rounded-lg p-3" style={detailCardStyle}>
-          <span className="text-xs font-semibold" style={detailLabelStyle}>Info técnica</span>
-          <p className="text-xs mt-1" style={detailMutedStyle}>
-            Formato: {d.metadata.format || 'N/A'} · Duración: {d.metadata.duration ? `${d.metadata.duration.toFixed(1)}s` : 'N/A'} · Procesado en {d.processingTime ? `${d.processingTime.toFixed(2)}s` : 'N/A'}
-          </p>
-        </div>
-      )}
-    </div>
-  )
-
-  const renderHistoryDetail = (item) => {
-    if (!item.detail) {
-      return (
-        <div className="mt-3 pt-3" style={{ borderTop: '1px solid #1C2A52' }}>
-          <p className="text-xs" style={detailMutedStyle}>No hay detalle disponible para este análisis (se guardó antes de esta actualización).</p>
-        </div>
-      )
-    }
-    return item.detail.kind === 'media' ? renderMediaHistoryDetail(item.detail) : renderNewsHistoryDetail(item.detail)
-  }
-
   return (
     <div className="min-h-screen px-4 py-6 md:py-12" style={{ backgroundColor: '#FFFFFF' }}>
-      {/* ===== MODAL TERMINOS Y CONDICIONES (bloqueante hasta aceptar) ===== */}
-      {!termsAccepted && (
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(16,27,61,0.65)' }}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="terms-modal-title"
-        >
-          <div
-            className="w-full max-w-xl rounded-xl shadow-2xl flex flex-col overflow-hidden"
-            style={{ backgroundColor: '#FFFFFF', maxHeight: '90vh' }}
-          >
-            {/* Header */}
-            <div className="flex items-center gap-3 px-6 py-4 border-b flex-shrink-0" style={{ borderColor: '#E9ECEF' }}>
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: BRAND_ORANGE + '1A' }}>
-                <Scale className="w-5 h-5" style={{ color: BRAND_ORANGE }} />
-              </div>
-              <div>
-                <h2 id="terms-modal-title" className="text-base font-bold" style={{ color: BRAND_NAVY }}>Términos y Condiciones de Uso</h2>
-                <p className="text-xs text-gray-500">Debes leerlos y aceptarlos para continuar</p>
-              </div>
-            </div>
-
-            {/* Body */}
-            <div className="px-6 py-4">
-              <div className="relative">
-                <div
-                  className="overflow-y-auto pr-1"
-                  style={{ maxHeight: termsExpanded ? '50vh' : '190px' }}
-                >
-                  {TERMS_META.map((line, i) => (
-                    <p key={i} className="text-xs text-gray-500">{line}</p>
-                  ))}
-                  <div className="my-3 border-t" style={{ borderColor: '#E9ECEF' }} />
-                  {TERMS_INTRO.map((t, i) => (
-                    <p key={i} className="text-sm text-gray-700 mb-3 leading-relaxed">{t}</p>
-                  ))}
-                  {TERMS_SECTIONS.map((sec, i) => (
-                    <div key={i} className="mb-4">
-                      <h4 className="text-sm font-bold mb-1.5" style={{ color: BRAND_NAVY }}>{sec.title}</h4>
-                      {sec.blocks.map((b, j) => (
-                        b.type === 'ul' ? (
-                          <ul key={j} className="list-disc pl-5 mb-2 space-y-1">
-                            {b.items.map((it, k) => (
-                              <li key={k} className="text-sm text-gray-700 leading-relaxed">{it}</li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p key={j} className="text-sm text-gray-700 mb-2 leading-relaxed">{b.text}</p>
-                        )
-                      ))}
-                    </div>
-                  ))}
-                  {TERMS_CLOSING.length > 0 && (
-                    <div className="mt-2 pt-4 border-t text-center" style={{ borderColor: '#E9ECEF' }}>
-                      {TERMS_CLOSING.map((t, i) => (
-                        <p key={i} className={i === 0 ? 'text-sm font-bold' : 'text-xs text-gray-500'} style={i === 0 ? { color: BRAND_NAVY } : undefined}>{t}</p>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                {!termsExpanded && (
-                  <div
-                    className="absolute bottom-0 left-0 right-0 h-14 pointer-events-none"
-                    style={{ background: 'linear-gradient(to bottom, rgba(255,255,255,0), #FFFFFF)' }}
-                  />
-                )}
-              </div>
-              {!termsExpanded && (
-                <button
-                  type="button"
-                  onClick={() => setTermsExpanded(true)}
-                  className="mt-2 text-sm font-semibold text-left"
-                  style={{ color: BRAND_ORANGE }}
-                >
-                  Leer más ↓
-                </button>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="border-t px-6 py-4 flex-shrink-0" style={{ borderColor: '#E9ECEF', backgroundColor: '#F8F9FA' }}>
-              <label className={`flex items-start gap-2.5 ${termsExpanded ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
-                <input
-                  type="checkbox"
-                  checked={termsChecked}
-                  disabled={!termsExpanded}
-                  onChange={(e) => setTermsChecked(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 rounded flex-shrink-0"
-                  style={{ accentColor: BRAND_ORANGE }}
-                />
-                <span className="text-sm text-gray-700">
-                  He leído y acepto los <strong>Términos y Condiciones de Uso</strong> de AMALLU-IA.
-                </span>
-              </label>
-              {!termsExpanded && (
-                <p className="text-xs mt-1.5 ml-[26px]" style={{ color: BRAND_ORANGE }}>
-                  Despliega "Leer más" para leer el documento completo antes de aceptar.
-                </p>
-              )}
-              <button
-                type="button"
-                onClick={handleAcceptTerms}
-                disabled={!termsChecked}
-                className="mt-3 w-full py-2.5 rounded-lg text-sm font-semibold transition-all"
-                style={{
-                  backgroundColor: termsChecked ? BRAND_ORANGE : '#E9ECEF',
-                  color: termsChecked ? '#FFFFFF' : '#9CA3AF',
-                  cursor: termsChecked ? 'pointer' : 'not-allowed'
-                }}
-              >
-                Aceptar y continuar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="max-w-[1200px] mx-auto">
         {/* ===== HEADER ===== */}
         <header className="mb-6">
@@ -2101,16 +1332,11 @@ function App() {
                     className="rounded-lg p-8 text-center transition-all cursor-pointer"
                     style={{
                       border: '2px dashed #16234E',
-                      backgroundColor: '#101B3D',
-                      opacity: analyzing ? 0.6 : 1,
-                      cursor: analyzing ? 'not-allowed' : 'pointer'
+                      backgroundColor: '#101B3D'
                     }}
                     onMouseEnter={e => e.currentTarget.style.borderColor = BRAND_ORANGE}
                     onMouseLeave={e => e.currentTarget.style.borderColor = '#16234E'}
-                    onClick={() => {
-                      if (analyzing) return
-                      fileInputRef.current?.click()
-                    }}
+                    onClick={() => fileInputRef.current?.click()}
                   >
                     <Upload className="w-10 h-10 mx-auto mb-3" style={{ color: '#7A8290' }} />
                     <p className="text-sm mb-1" style={{ color: '#E8ECF1' }}>
@@ -2495,7 +1721,7 @@ function App() {
                   <div className="mb-2">
                     <div className="flex items-center gap-2 mb-2">
                       <ClipboardList className="w-5 h-5" style={{ color: BRAND_ORANGE }} />
-                      <h3 className="text-base font-semibold text-gray-900">Historial de análisis</h3>
+                      <h3 className="text-base font-semibold text-white">Historial de análisis</h3>
                     </div>
                     <p className="text-xs leading-relaxed" style={{ color: '#7A8290' }}>
                       Registro de los links, noticias, videos y audios que ya analizaste en este navegador
@@ -2514,71 +1740,32 @@ function App() {
                     <div className="space-y-2 mb-2">
                       {history.map((item) => {
                         const Icon = getStatusIcon(item.status)
-                        const isExpanded = expandedHistoryIds.has(item.id)
                         return (
                           <div
                             key={item.id}
                             className="rounded-lg p-3"
                             style={{ backgroundColor: '#101B3D', border: '1px solid #16234E' }}
                           >
-                            <button
-                              type="button"
-                              onClick={() => toggleHistoryExpanded(item.id)}
-                              className="w-full text-left"
-                              aria-expanded={isExpanded}
-                            >
-                              <div className="flex items-start justify-between gap-3">
-                                <p className="text-sm flex-1 min-w-0 truncate" style={{ color: '#E8ECF1' }}>{item.title}</p>
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                  <span className="text-xs font-mono" style={{ color: '#7A8290' }}>
-                                    {new Date(item.timestamp).toLocaleString('es-EC', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                  </span>
-                                  {isExpanded ? (
-                                    <ChevronUp className="w-3.5 h-3.5" style={{ color: '#7A8290' }} />
-                                  ) : (
-                                    <ChevronDown className="w-3.5 h-3.5" style={{ color: '#7A8290' }} />
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 mt-1.5">
-                                <Icon className="w-3 h-3" style={{ color: getStatusColor(item.status) }} />
-                                <span className="text-xs font-mono capitalize" style={{ color: getStatusColor(item.status) }}>
-                                  {item.status}
-                                </span>
+                            <div className="flex items-start justify-between gap-3">
+                              <p className="text-sm flex-1 min-w-0 truncate" style={{ color: '#E8ECF1' }}>{item.title}</p>
+                              <span className="text-xs font-mono flex-shrink-0" style={{ color: '#7A8290' }}>
+                                {new Date(item.timestamp).toLocaleString('es-EC', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <Icon className="w-3 h-3" style={{ color: getStatusColor(item.status) }} />
+                              <span className="text-xs font-mono capitalize" style={{ color: getStatusColor(item.status) }}>
+                                {item.status}
+                              </span>
+                              <span className="text-xs font-mono" style={{ color: '#7A8290' }}>
+                                · {item.type === 'link' ? 'Noticia' : 'Video/Audio'}
+                              </span>
+                              {item.confidence !== null && (
                                 <span className="text-xs font-mono" style={{ color: '#7A8290' }}>
-                                  · {item.type === 'link' ? 'Noticia' : 'Video/Audio'}
+                                  · {(item.confidence * 100).toFixed(0)}% confianza
                                 </span>
-                                {item.confidence !== null && (
-                                  <span className="text-xs font-mono" style={{ color: '#7A8290' }}>
-                                    · {(item.confidence * 100).toFixed(0)}% confianza
-                                  </span>
-                                )}
-                                {item.pending && (
-                                  <span className="text-xs font-mono flex items-center gap-1" style={{ color: BRAND_ORANGE }}>
-                                    ·
-                                    <span
-                                      className="w-1.5 h-1.5 rounded-full inline-block"
-                                      style={{ backgroundColor: BRAND_ORANGE, animation: 'pulse-dot 2s ease-in-out infinite' }}
-                                    />
-                                    Actualizando…
-                                  </span>
-                                )}
-                              </div>
-                            </button>
-                            {isExpanded && (
-                              <>
-                                {renderHistoryDetail(item)}
-                                <button
-                                  type="button"
-                                  onClick={() => handleAskKuybot(item)}
-                                  className="mt-2 w-full flex items-center justify-center gap-2 text-xs font-semibold py-2 rounded-lg"
-                                  style={{ backgroundColor: BRAND_ORANGE + '18', color: BRAND_ORANGE }}
-                                >
-                                  <MessageCircle className="w-3.5 h-3.5" />
-                                  Preguntar a Kuybot sobre esto
-                                </button>
-                              </>
-                            )}
+                              )}
+                            </div>
                           </div>
                         )
                       })}
@@ -2588,7 +1775,7 @@ function App() {
                   <div className="mb-4 pt-2" style={{ borderTop: '1px solid #16234E' }}>
                     <div className="flex items-center gap-2 mb-2 pt-2">
                       <ClipboardList className="w-5 h-5" style={{ color: BRAND_ORANGE }} />
-                      <h3 className="text-base font-semibold text-gray-900">Criterios de evaluación</h3>
+                      <h3 className="text-base font-semibold text-white">Criterios de evaluación</h3>
                     </div>
                     <p className="text-xs leading-relaxed" style={{ color: '#7A8290' }}>
                       Estos son los 5 criterios que utilizamos para verificar la autenticidad del contenido electoral
@@ -2707,8 +1894,13 @@ function App() {
           <div className="flex-1 overflow-y-auto p-3.5 space-y-3.5" style={{ backgroundColor: '#F7F9FC' }}>
             {currentNewsContext ? (
               <div className="rounded-xl p-3.5" style={{ backgroundColor: '#FFFFFF', border: '1px solid #E9ECEF' }}>
-                <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-gray-400">Noticia en análisis</span>
-                <p className="text-sm font-bold leading-snug mt-2" style={{ color: BRAND_NAVY }}>{currentNewsContext.title}</p>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-gray-400">Noticia en análisis</span>
+                  <span className="px-2 py-1 rounded-full text-[10px] font-bold uppercase" style={{ backgroundColor: '#F5822B18', color: BRAND_ORANGE }}>
+                    {currentNewsContext.auditLabel}
+                  </span>
+                </div>
+                <p className="text-sm font-bold leading-snug" style={{ color: BRAND_NAVY }}>{currentNewsContext.title}</p>
                 <p className="text-[11px] leading-relaxed mt-2 text-gray-600">
                   {currentNewsContext.summary.slice(0, 180)}{currentNewsContext.summary.length > 180 ? '...' : ''}
                 </p>
@@ -2764,19 +1956,31 @@ function App() {
                   </button>
                 ))}
               </div>
+              <button
+                onClick={handleCheckKuybotConnection}
+                disabled={kuybotProbeBusy || kuybotBusy}
+                className="mt-2.5 w-full px-2.5 py-2 rounded-lg text-[10px] font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+                style={{ backgroundColor: '#101B3D10', color: BRAND_NAVY, border: '1px solid #101B3D24' }}
+              >
+                {kuybotProbeBusy ? 'Validando conexión...' : 'Validar conexión chatbot (temporal)'}
+              </button>
             </div>
 
             {messages.map((msg, idx) => (
               <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className="max-w-[82%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm whitespace-pre-line"
+                  className="max-w-[92%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm"
                   style={
                     msg.role === 'user'
                       ? { backgroundColor: BRAND_ORANGE, color: '#FFFFFF', fontWeight: 600 }
                       : { backgroundColor: '#FFFFFF', color: BRAND_NAVY, border: '1px solid #E9ECEF' }
                   }
                 >
-                  {msg.text}
+                  {msg.role === 'user' ? (
+                    <p className="whitespace-pre-line">{msg.text}</p>
+                  ) : (
+                    renderStructuredAssistantMessage(msg.text)
+                  )}
                   {msg.sources && msg.sources.length > 0 && (
                     <div className="mt-3 pt-2 border-t border-gray-100">
                       <div className="text-[10px] font-mono uppercase tracking-[0.18em] mb-2 text-gray-400">Bibliografía</div>
