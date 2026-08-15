@@ -173,20 +173,15 @@ class FileHandler:
             'extractor_args': {
                 'youtube': {
                     'player_client': ['android', 'web'],
-                },
-                'tiktok': {
-                    'api_hostname': 'api22-normal-c-useast2a.tiktokv.com',
                 }
             },
             'http_headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Referer': 'https://www.tiktok.com/',
             },
         }
-        
-        # For TikTok, try with mobile user agent if web extraction fails
-        is_tiktok = 'tiktok.com' in url
-        if is_tiktok:
-            ydl_opts['http_headers']['User-Agent'] = 'com.zhiliaoapp.musically/2022500030 (Linux; U; Android 7.1.2; en_US; SM-G977N; Build/N2G47H;tt-ok/3.12.13.1)'
         
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -216,9 +211,84 @@ class FileHandler:
                 
             return Path(filename), metadata
         except yt_dlp.utils.DownloadError as e:
-            raise ValueError(f"No se pudo descargar el video de esta plataforma. Intenta con YouTube u otra URL. ({str(e)[:100]})")
+            # If TikTok, try cobalt.tools fallback
+            if 'tiktok.com' in url:
+                print("🔄 yt-dlp failed for TikTok, trying cobalt.tools fallback...")
+                try:
+                    result = await self._download_with_cobalt(url)
+                    if result:
+                        return result
+                except Exception as cobalt_err:
+                    print(f"⚠️ Cobalt fallback also failed: {cobalt_err}")
+            raise ValueError(f"No se pudo descargar el video de TikTok. La plataforma bloquea las descargas. Intenta con YouTube u otra URL. ({str(e)[:80]})")
         except Exception as e:
             raise ValueError(f"Error al descargar: {str(e)[:100]}")
+    
+    async def _download_with_cobalt(self, url: str) -> tuple[Path, dict]:
+        """Fallback download using cobalt.tools API for TikTok"""
+        import httpx
+        import imageio_ffmpeg
+        
+        api_url = "https://api.cobalt.tools/api/json"
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "url": url,
+            "vQuality": "720p",
+        }
+        
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            response = await client.post(api_url, json=payload, headers=headers)
+            data = response.json()
+            
+            if data.get("status") != "stream" and data.get("status") != "redirect":
+                raise ValueError(f"Cobalt returned: {data.get('status', 'unknown')}")
+            
+            stream_url = data.get("url")
+            if not stream_url:
+                raise ValueError("Cobalt: no download URL in response")
+            
+            # Download the stream
+            unique_id = str(uuid.uuid4())
+            output_path = self.temp_dir / f"{unique_id}.mp4"
+            
+            video_response = await client.get(stream_url)
+            if video_response.status_code != 200:
+                raise ValueError(f"Cobalt download failed: HTTP {video_response.status_code}")
+            
+            output_path.write_bytes(video_response.content)
+            
+            # Get video duration with ffprobe
+            ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+            try:
+                import subprocess
+                probe = subprocess.run(
+                    [ffmpeg_path.replace('ffmpeg', 'ffprobe'), '-v', 'quiet', '-print_format', 'json', '-show_format', str(output_path)],
+                    capture_output=True, text=True, timeout=10
+                )
+                duration = 0.0
+                if probe.returncode == 0:
+                    import json as _json
+                    fmt = _json.loads(probe.stdout).get('format', {})
+                    duration = float(fmt.get('duration', 0))
+            except:
+                duration = 0.0
+            
+            metadata = {
+                'title': 'TikTok Video',
+                'channel': '',
+                'source_url': url,
+                'platform': 'TikTok',
+                'duration': duration,
+                'view_count': 0,
+                'upload_date': '',
+                'is_verified': False,
+            }
+            
+            print(f"✅ Cobalt download successful: {output_path.name}")
+            return output_path, metadata
     
     def is_audio_file(self, file_path: Path) -> bool:
         """Check if file is an audio file based on extension"""
