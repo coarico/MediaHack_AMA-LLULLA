@@ -255,8 +255,8 @@ async def perform_content_analysis(file_path: str, is_video: bool = False, sourc
 
 def _combine_verdicts(result, content_analysis_dict):
     """Combine video/audio analyzer verdict with LLM verdict"""
-    llm_verdict = content_analysis_dict.get('llm_verdict', '').upper() if content_analysis_dict else ''
-    llm_confidence = content_analysis_dict.get('llm_confidence', 0) if content_analysis_dict else 0
+    llm_verdict = (content_analysis_dict.get('llm_verdict') or '').upper() if content_analysis_dict else ''
+    llm_confidence = content_analysis_dict.get('llm_confidence') or 0 if content_analysis_dict else 0
     llm_analysis = content_analysis_dict.get('llm_analysis', {}) if content_analysis_dict else {}
     indicios_ia = (llm_analysis.get('indicios_ia', '') or '').lower() if llm_analysis else ''
     
