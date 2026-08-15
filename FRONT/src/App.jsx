@@ -125,9 +125,13 @@ function App() {
       setAnalysisResult(result)
 
       // Registrar en el historial real (localStorage) para Auditor y Home
-      const status = (result.is_ai_generated || result.is_misinformation)
+      // Calcular score real igual que el banner
+      const isAI = result.is_ai_generated
+      const rawConf = result.confidence
+      const displayScore = isAI ? rawConf : (1 - rawConf)
+      const status = isAI
         ? 'falso'
-        : (result.confidence < 0.6 ? 'dudoso' : 'verificado')
+        : (displayScore >= 0.6 ? 'verificado' : 'dudoso')
       const sourceTitle = result.metadata?.source_metadata?.title
       const title = sourceTitle || (activeTab === 'link' ? urlValue : (selectedFile?.name || videoUrl)) || 'Contenido analizado'
       addHistoryEntry({
@@ -136,7 +140,7 @@ function App() {
         title,
         source: activeTab === 'link' ? urlValue : (videoUrl || selectedFile?.name || ''),
         status,
-        confidence: typeof result.confidence === 'number' ? result.confidence : null,
+        confidence: typeof displayScore === 'number' ? displayScore : null,
         timestamp: new Date().toISOString()
       })
     } catch (err) {
@@ -1455,7 +1459,7 @@ function App() {
                               </span>
                               {item.confidence !== null && (
                                 <span className="text-xs font-mono" style={{ color: '#7A8290' }}>
-                                  · {(item.confidence * 100).toFixed(0)}% confianza
+                                  · {(item.confidence * 100).toFixed(0)}% {item.status === 'falso' ? 'Prob. IA' : 'Prob. real'}
                                 </span>
                               )}
                             </div>
