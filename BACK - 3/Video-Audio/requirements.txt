@@ -23,7 +23,7 @@ python-dotenv==1.0.0
 aiofiles==23.2.1
 
 # HTTP Client
-httpx==0.25.2
+httpx==0.28.1
 
 # Speech-to-Text
 openai-whisper==20231117

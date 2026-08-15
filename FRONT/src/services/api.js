@@ -5,7 +5,7 @@ const NOTICIAS_API_BASE_URL = resolveApiBaseUrl(
 );
 const VIDEO_AUDIO_API_BASE_URL = resolveApiBaseUrl(
   'VITE_VIDEO_AUDIO_API_URL',
-  8002,
+  8001,
   'https://video-audio-production.up.railway.app',
 );
 
@@ -83,10 +83,13 @@ async function parseResponse(response) {
 
 function resolveApiBaseUrl(envKey, port, productionFallback) {
   const configuredUrl = import.meta.env[envKey];
-  if (configuredUrl && !configuredUrl.includes('localhost')) return normalizeApiUrl(configuredUrl);
+  if (configuredUrl) return normalizeApiUrl(configuredUrl);
   if (typeof window === 'undefined') return configuredUrl || productionFallback || `http://localhost:${port}`;
 
   const { protocol, hostname } = window.location;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return `${protocol}//${hostname}:${port}`;
+  }
   if (hostname.endsWith('.app.github.dev')) {
     return `${protocol}//${hostname.replace('-5173.', `-${port}.`)}`;
   }

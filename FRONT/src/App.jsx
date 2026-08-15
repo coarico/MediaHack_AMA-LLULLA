@@ -300,6 +300,7 @@ function App() {
   const chatEndRef = useRef(null)
   const fileInputRef = useRef(null)
   const pollingRef = useRef(null)
+  const analyzeLockRef = useRef(false)
 
   const HISTORY_KEY = 'ama_llu_ia_history'
   const [history, setHistory] = useState(() => {
@@ -605,6 +606,8 @@ function App() {
   }
 
   const handleAnalyze = async () => {
+    if (analyzing || analyzeLockRef.current) return
+    analyzeLockRef.current = true
     setAnalyzing(true)
     setError(null)
     setAnalysisResult(null)
@@ -660,6 +663,7 @@ function App() {
       setError(err.message || 'Error al procesar el análisis')
       console.error('Error al analizar:', err)
     } finally {
+      analyzeLockRef.current = false
       setAnalyzing(false)
     }
   }
@@ -2097,11 +2101,16 @@ function App() {
                     className="rounded-lg p-8 text-center transition-all cursor-pointer"
                     style={{
                       border: '2px dashed #16234E',
-                      backgroundColor: '#101B3D'
+                      backgroundColor: '#101B3D',
+                      opacity: analyzing ? 0.6 : 1,
+                      cursor: analyzing ? 'not-allowed' : 'pointer'
                     }}
                     onMouseEnter={e => e.currentTarget.style.borderColor = BRAND_ORANGE}
                     onMouseLeave={e => e.currentTarget.style.borderColor = '#16234E'}
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => {
+                      if (analyzing) return
+                      fileInputRef.current?.click()
+                    }}
                   >
                     <Upload className="w-10 h-10 mx-auto mb-3" style={{ color: '#7A8290' }} />
                     <p className="text-sm mb-1" style={{ color: '#E8ECF1' }}>
