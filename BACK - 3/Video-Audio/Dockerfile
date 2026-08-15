@@ -12,7 +12,14 @@ RUN pip install --upgrade pip setuptools wheel
 
 # Copy requirements and install
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+
+# Install openai-whisper separately with build dependencies
+RUN pip install --no-cache-dir openai-whisper==20231117
+
+# Install remaining requirements (excluding openai-whisper)
+RUN grep -v "openai-whisper" requirements.txt > requirements_temp.txt && \
+    pip install --no-cache-dir -r requirements_temp.txt && \
+    rm requirements_temp.txt
 
 # Copy application
 COPY . .
