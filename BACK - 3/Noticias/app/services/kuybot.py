@@ -12,49 +12,106 @@ from app.schemas.news import KuybotFactCheckItem, KuybotResponse
 
 SYSTEM_PROMPT = """Eres Kuybot, asistente de investigación y verificación periodística de AMA LLU IA.
 
-Tu función es ayudar al usuario a investigar una noticia previamente analizada por la plataforma.
-No eres una fuente de verdad. Tu labor es contrastar contextos, afirmaciones y fuentes.
-Prioriza las fuentes según la jerarquía editorial como contexto y prioridad, no como verdad absoluta.
-Diferencia entre hechos, afirmaciones, opiniones, interpretaciones, evidencia y ausencia de evidencia.
-Cuando exista información oficial, priorízala.
-Cuando haya contradicciones, muéstralas.
-Cuando no haya pruebas suficientes, dilo de forma clara.
-Nunca inventes fuentes, URLs, citas o fechas.
-Tu respuesta debe ser breve, clara y explicada, con un formato útil para reportar investigación periodística.
-Devuelve una conclusión, por qué se concluye así, evidencia y fuentes.
+Flujo operativo obligatorio:
+1) Lee la noticia auditada y la pregunta del usuario.
+2) Interpreta la intención del usuario con Gemini.
+3) Decide qué necesita: contraste, verificación, fuentes oficiales, contexto o evidencia.
+4) Usa evidencia externa real, priorizando:
+   - Google Custom Search (Google Search Engine)
+   - Fact Check Tools API
+   - Fuentes oficiales institucionales
+   - Fuentes relacionadas de la noticia
+5) No te limites a la base de datos local. Debes consultar resultados web reales cuando la pregunta lo requiera.
+6) Produce una respuesta con esta estructura exacta:
+   - Conclusión
+   - ¿Por qué se concluye así?
+   - Evidencia
+   - Fuentes
+
+Reglas:
+- No inventes fuentes, URLs, citas, fechas ni instituciones.
+- Si no hay evidencia suficiente, dilo claramente.
+- Cuando exista un conflicto o contradicción, lo explicas con claridad.
+- Prioriza fuentes oficiales y verificadas sobre rumores o análisis no contrastados.
+- Usa una redacción breve, clara y útil para reportaje periodístico.
+- No muestres texto fijo, plantillas vacías ni mensajes predeterminados del sistema.
+- La respuesta final debe estar escrita como un análisis real del contexto, no como un chatbot genérico.
 """
 
 
 def _infer_question_intent(question: str) -> str:
     q = (question or "").lower()
 
-    if any(term in q for term in ["es verdad", "verdad", "falso", "mentira", "confirmado", "desmentido", "verificado"]):
+    if any(term in q for term in ["es verdad", "verdad", "falso", "mentira", "confirmado", "desmentido", "verificado", "qué pasó", "qué ocurrió", "qué sucedió", "contrad", "compare", "diferencia", "evidencia", "respaldan", "apoyan", "coincide"]):
         return "verification"
-    if any(term in q for term in ["fuente oficial", "qué dijo", "dice el cne", "dice la fiscalía", "fuentes oficiales", "institución", "ministerio"]):
+    if any(term in q for term in ["fuente oficial", "qué dijo", "dice el cne", "dice la fiscalía", "fuentes oficiales", "institución", "ministerio", "qué dicen", "documento oficial"]):
         return "official_source"
-    if any(term in q for term in ["contrad", "contrario", "opuesto", "coincide", "compare", "compar", "diferencia"]):
+    if any(term in q for term in ["contrario", "opuesto", "coincide", "compare", "compar", "diferencia", "contradic"]):
         return "contrast"
-    if any(term in q for term in ["fuente", "respald", "apoyan", "qué fuentes", "documentan", "evidencia"]):
+    if any(term in q for term in ["fuente", "respald", "apoyan", "qué fuentes", "documentan", "evidencia", "pruebas", "verificación"]):
         return "sources"
     if any(term in q for term in ["antecedente", "historia", "pasado", "anteriormente", "relacionado", "noticias relacionadas"]):
         return "background"
-    if any(term in q for term in ["qué pasó", "qué ocurrió", "qué sucedió", "contexto"]):
+    if any(term in q for term in ["contexto", "significado", "qué significa", "explica", "resumen", "define"]):
         return "context"
     return "general"
+
+
+def _classify_research_level(question: str | None) -> str:
+    q = (question or "").lower()
+
+    if any(term in q for term in ["qué significa", "significado", "define", "explica", "resumen", "contexto", "qué es", "explica el concepto", "resumen del contexto"]):
+        return "level_1"
+
+    if any(term in q for term in ["qué dijo el cne", "qué dice el cne", "qué dijo la fiscalía", "qué dijo el ministerio", "fuente oficial", "qué dicen las fuentes oficiales", "dónde aparece", "qué dijo"]):
+        return "level_2"
+
+    if any(term in q for term in ["es verdad", "verdad", "falso", "mentira", "confirmado", "desmentido", "verificado", "qué ocurrió realmente", "contradicción", "comparar", "coincide", "diferencia", "evidencia", "qué fuentes respaldan", "qué dicen diferentes medios", "qué pasó realmente"]):
+        return "level_3"
+
+    if any(term in q for term in ["fuente", "fuentes", "apoyan", "respaldan", "pruebas", "fact-check", "verificación", "investigación"]):
+        return "level_2"
+
+    return "level_1"
+
+
+def _build_search_query(payload: dict) -> str:
+    news = payload.get("news") or {}
+    question = payload.get("question") or ""
+    title = news.get("title") or ""
+    claims = " ".join((news.get("main_claims") or [])[:3])
+    audit = news.get("audit_summary") or ""
+    return " ".join(part for part in [question, title, claims, audit] if part and str(part).strip())
 
 
 async def ask_kuybot(question: str, news: dict | None, history: list[dict] | None = None) -> KuybotResponse:
     payload = _build_context(news, question, history or [])
     intent = _infer_question_intent(question)
+    research_level = _classify_research_level(question)
     payload["intent"] = intent
+    payload["research_level"] = research_level
+    payload["search_query"] = _build_search_query(payload)
 
-    fact_check = await _search_fact_checks(payload.get("question"), payload.get("news", {}).get("title"), payload.get("news", {}).get("main_claims", []))
-    search_results = await _search_web_results(payload)
+    fact_check: list[KuybotFactCheckItem] = []
+    search_results: list[dict] = []
+
+    if research_level in {"level_2", "level_3"}:
+        fact_check = await _search_fact_checks(payload)
+
+    if research_level == "level_3":
+        search_results = await _search_web_results(payload)
+
+    if research_level == "level_2":
+        official_candidates = _extract_official_sources(payload)
+        if official_candidates:
+            payload["preferred_official_source"] = official_candidates[0]
+
     payload["evidence"] = {
         "fact_checks": [item.model_dump(exclude_none=True) for item in fact_check],
         "search_results": search_results,
         "official_sources": _extract_official_sources(payload),
         "intent": intent,
+        "research_level": research_level,
     }
 
     if settings.gemini_api_key:
@@ -130,11 +187,11 @@ async def _ask_gemini(payload: dict, fact_check: list[KuybotFactCheckItem], sear
     )
 
 
-async def _search_fact_checks(question: str, title: str | None, claims: list[str]) -> list[KuybotFactCheckItem]:
+async def _search_fact_checks(payload: dict) -> list[KuybotFactCheckItem]:
     if not settings.fact_check_api_key:
         return []
 
-    query = question or title or " ".join(claims[:2])
+    query = _build_search_query(payload)
     url = "https://factchecktools.googleapis.com/v1alpha1/claims:search"
     params = {"key": settings.fact_check_api_key, "query": query, "maxAgeDays": 3650}
 
@@ -166,7 +223,7 @@ async def _search_web_results(payload: dict) -> list[dict]:
     if not settings.google_search_api_key or not settings.google_search_cx:
         return []
 
-    query = payload.get("question") or payload.get("news", {}).get("title") or " ".join((payload.get("news", {}) or {}).get("main_claims", [])[:2])
+    query = _build_search_query(payload)
     if not query:
         return []
 
