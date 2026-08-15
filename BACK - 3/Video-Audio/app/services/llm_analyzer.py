@@ -114,8 +114,13 @@ class LLMAnalyzer:
             print("⚠️ Groq API key not configured, skipping LLM analysis")
             return None
 
-        if not transcription or len(transcription.strip()) < 20:
-            return None
+        # Use title as fallback if transcription is too short
+        if not transcription or len(transcription.strip()) < 10:
+            if title and len(title.strip()) >= 5:
+                transcription = f"[Video sin transcripción clara. Título: {title}]"
+                print(f"ℹ️ Using title as fallback for LLM analysis (transcription too short)")
+            else:
+                return None
 
         # Truncate transcription to save tokens (max ~2000 chars)
         trans_truncated = transcription[:2000]
