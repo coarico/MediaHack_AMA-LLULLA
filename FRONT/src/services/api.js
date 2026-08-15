@@ -24,6 +24,16 @@ export const getNewsAnalysis = async (analysisId) => {
   return parseResponse(response);
 };
 
+export const askKuybot = async ({ question, news, history }) => {
+  const response = await fetch(`${NOTICIAS_API_BASE_URL}/api/v1/noticias/kuybot`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question, news, history }),
+  });
+
+  return parseResponse(response);
+};
+
 export const analyzeAudio = async (file) => {
   const formData = new FormData();
   formData.append('file', file);

@@ -7,6 +7,11 @@ from app.services.kuybot import (
 )
 
 
+def test_infers_person_profile_intent_from_question() -> None:
+    intent = _infer_question_intent('¿quien es luis alberto jaramillo?')
+    assert intent == 'person_profile'
+
+
 def test_infers_verification_intent_from_question() -> None:
     intent = _infer_question_intent('¿Es verdad que el CNE confirmó fraude electoral?')
     assert intent == 'verification'
